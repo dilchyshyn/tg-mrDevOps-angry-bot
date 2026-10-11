@@ -1,0 +1,156 @@
+# Пул цитат для mrDevOps.
+# lang: uk (українська) або surzhyk (суржик)
+# tags: довільні теги для майбутнього відбору за темою
+# Максимальна грубість: матюків приблизно вдвічі-втричі більше за звичайні слова.
+# Без сексуального глузування з жінок, національностей, релігій, сексуальної орієнтації
+# та конкретних людей.
+
+quotes:
+  - id: docker-01
+    text: "Блядь, сука, контейнер ебать, нахуй, блядь, сука."
+    lang: uk
+    tags: [docker]
+  - id: docker-02
+    text: "Блядь, сука, прод ебать, локалка хуй, блядь."
+    lang: surzhyk
+    tags: [docker, deploy]
+  - id: docker-03
+    text: "Сука блядь, latest ебать, нахуй, блядь, сука."
+    lang: surzhyk
+    tags: [docker]
+  - id: k8s-01
+    text: "Сука блядь, под ебать, хуйовий квест, нахуй, блядь."
+    lang: uk
+    tags: [k8s]
+  - id: k8s-02
+    text: "Блядь, сука, crashloop ебать, нахуй, блядь."
+    lang: surzhyk
+    tags: [k8s]
+  - id: k8s-03
+    text: "Сука блядь, helm ебать, нахуй, блядь, сука."
+    lang: uk
+    tags: [k8s, helm]
+  - id: cicd-01
+    text: "Блядь, сука, пайплайн ебать, прод пиздець, блядь."
+    lang: uk
+    tags: [cicd]
+  - id: cicd-02
+    text: "Блядь, сука, пушнуть ахуєть, ебать, блядь."
+    lang: surzhyk
+    tags: [cicd]
+  - id: cicd-03
+    text: "Сука блядь, пайплайн ебать, нахуй, блядь."
+    lang: surzhyk
+    tags: [cicd]
+  - id: deploy-01
+    text: "Блядь, сука, деплой ебать, самогубство, нахуй."
+    lang: uk
+    tags: [deploy]
+  - id: deploy-02
+    text: "Блядь, сука, не деплой ебать, блядь, вирок."
+    lang: surzhyk
+    tags: [deploy]
+  - id: deploy-03
+    text: "Сука блядь, rollback ебать, нахуй, блядь, сука."
+    lang: uk
+    tags: [deploy, rollback]
+  - id: prod-01
+    text: "Блядь, сука, прод ебать, нахуй, блядь."
+    lang: uk
+    tags: [prod]
+  - id: prod-02
+    text: "Блядь, сука, не чіпав ебаний ідіот, нахуй, блядь."
+    lang: surzhyk
+    tags: [prod]
+  - id: prod-03
+    text: "Сука блядь, прод ебать, нахуй, блядь, сука."
+    lang: uk
+    tags: [prod]
+  - id: nginx-01
+    text: "Блядь, сука, nginx ебать, нахуй, блядь."
+    lang: uk
+    tags: [nginx]
+  - id: nginx-02
+    text: "Сука блядь, конфіг ебать, хуйова доля, блядь."
+    lang: surzhyk
+    tags: [nginx]
+  - id: tf-01
+    text: "Блядь, сука, terraform ебать, хуєво, нахуй."
+    lang: uk
+    tags: [terraform]
+  - id: tf-02
+    text: "Сука блядь, state ебаний дебіл, нахуй, блядь."
+    lang: surzhyk
+    tags: [terraform]
+  - id: ansible-01
+    text: "Блядь, сука, ansible ебать, нахуй, блядь."
+    lang: uk
+    tags: [ansible]
+  - id: linux-01
+    text: "Сука блядь, sudo ебать, драма, нахуй, блядь."
+    lang: uk
+    tags: [linux]
+  - id: linux-02
+    text: "Блядь, сука, шо ебать, пацан, блядь."
+    lang: surzhyk
+    tags: [linux]
+  - id: monitoring-01
+    text: "Блядь, сука, алерт ебать, нахуй, блядь."
+    lang: uk
+    tags: [monitoring]
+  - id: monitoring-02
+    text: "Сука блядь, дашборд ебать, пиздабол, блядь."
+    lang: surzhyk
+    tags: [monitoring]
+  - id: logs-01
+    text: "Блядь, сука, логи ебать, нахуй, блядь."
+    lang: uk
+    tags: [logs]
+  - id: backup-01
+    text: "Сука блядь, бекап ебать, нахуй, блядь."
+    lang: uk
+    tags: [backup]
+  - id: backup-02
+    text: "Блядь, сука, бекап ебать, блядь."
+    lang: surzhyk
+    tags: [backup]
+  - id: git-01
+    text: "Блядь, сука, force push ебать, пиздець, нахуй."
+    lang: uk
+    tags: [git]
+  - id: git-02
+    text: "Сука блядь, reset ебать, блядська пригода, блядь."
+    lang: surzhyk
+    tags: [git]
+  - id: general-01
+    text: "Блядь, сука, девопс ебать, нахуй, блядь."
+    lang: uk
+    tags: [general]
+  - id: general-02
+    text: "Сука блядь, одну вирішуєш, ебать, нахуй, блядь."
+    lang: surzhyk
+    tags: [general]
+  - id: general-03
+    text: "Блядь, сука, не чіпай ебать, молодець, хуйло, блядь."
+    lang: uk
+    tags: [general]
+  - id: general-04
+    text: "Сука блядь, документація ебать, нахуй, блядь."
+    lang: uk
+    tags: [general]
+  - id: life-01
+    text: "Блядь, сука, понеділок ебать, пиздець, блядь."
+    lang: uk
+    tags: [life]
+  - id: life-02
+    text: "Сука блядь, гроші ебаний квест, нахуй, блядь."
+    lang: surzhyk
+    tags: [life]
+  - id: life-03
+    text: "Блядь, сука, спав ебать, нахуй, блядь."
+    lang: surzhyk
+    tags: [life]
+  - id: life-04
+    text: "Сука блядь, живи тихо, ебать, не ебу мозок, сука, блядь."
+    lang: surzhyk
+    tags: [life]
