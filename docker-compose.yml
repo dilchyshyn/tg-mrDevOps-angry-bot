@@ -1,0 +1,18 @@
+services:
+  mrdevops:
+    image: ${MRDEVOPS_IMAGE:-mrdevops:local}
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      HEARTBEAT_PATH: /tmp/mrdevops.heartbeat
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
