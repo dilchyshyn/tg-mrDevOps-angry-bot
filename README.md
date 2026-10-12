@@ -4,11 +4,13 @@ Telegram-бот, який у груповому чаті відповідає п
 
 ## Як це працює
 
-1. Бот отримує повідомлення в групі (privacy mode вимкнений).
-2. Короткі повідомлення і без літер відсіюються без виклику LLM.
-3. Gemini Flash класифікує, чи це DevOps-тема.
-4. Якщо так і чат не в cooldown, бот відповідає цитатою в reply.
-5. Цитата береться з `quotes/quotes.yaml` або генерується LLM (режим `QUOTE_MODE`).
+Бот читає кожне текстове повідомлення в групі (privacy mode має бути вимкнений) і перевіряє по черзі:
+
+1. **Красовська.** Якщо є слово «Красовська» у будь-якому відмінку й регістрі (також «красовская», «Krasovska»), бот відповідає теплою фразою про те, як сильно її любить. Фрази статичні, без матів, у `bot/triggers.py`. Не частіше ніж раз на `COOLDOWN_SECONDS` у чаті.
+2. **Звертання до бота.** «мрдевопс», «мр девопс», «mrDevOps», «містер девопс», `@username` бота або reply на його повідомлення: Gemini відповідає на питання в стилі бота. Cooldown тут не діє.
+3. **DevOps.** Короткі повідомлення й ті, що без літер, відсіюються. Gemini Flash класифікує тему, і якщо це DevOps, а чат не в cooldown, бот відповідає цитатою в reply. Цитата береться з `quotes/quotes.yaml` або генерується LLM (режим `QUOTE_MODE`).
+
+Безкоштовний тариф Gemini дає 5 запитів на хвилину для `gemini-2.5-flash`. Коли ліміт вичерпано, бот мовчить, на звертання відповідає «не на звʼязку».
 
 ## Налаштування
 
@@ -36,6 +38,32 @@ make up      # збірка і запуск
 make logs    # логи
 make down
 ```
+
+## Хостинг на Oracle Cloud (Always Free)
+
+Боту не потрібні вхідні порти (long polling), тільки вихідний інтернет і SSH для деплою.
+
+1. **Сервер.** Oracle Cloud → Compute → Instances → Create instance:
+   - Image: **Ubuntu 22.04 або 24.04**;
+   - Shape: `VM.Standard.A1.Flex` (ARM, Always Free) або `VM.Standard.E2.1.Micro` (AMD, Always Free). Образ збирається під обидві архітектури;
+   - SSH keys: завантаж свій публічний ключ, щоб зайти на сервер.
+2. **Docker на сервері:**
+   ```bash
+   ssh ubuntu@<публічний IP>
+   curl -fsSL https://get.docker.com | sudo sh
+   sudo usermod -aG docker ubuntu
+   exit   # перезайти, щоб група docker застосувалась
+   ```
+3. **Окремий ключ для деплою** (на своєму комп'ютері):
+   ```bash
+   ssh-keygen -t ed25519 -f ~/.ssh/mrdevops_deploy -N ""
+   ssh-copy-id -i ~/.ssh/mrdevops_deploy.pub ubuntu@<публічний IP>
+   ssh-keyscan -H <публічний IP>    # вивід піде у VPS_KNOWN_HOSTS
+   ```
+4. **Секрети в GitHub**: Settings → Environments → `production` (таблиця нижче). `VPS_HOST` = публічний IP, `VPS_USER` = `ubuntu`, `VPS_SSH_KEY` = вміст `~/.ssh/mrdevops_deploy` (приватний).
+5. **Деплой:** push у `main` або Actions → Deploy → Run workflow.
+
+Один токен бота може слухати тільки один процес. Коли бот працює на сервері, локальний `make run` упаде з `TelegramConflictError`.
 
 ## Деплой
 
