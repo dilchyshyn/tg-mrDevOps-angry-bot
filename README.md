@@ -69,7 +69,7 @@ make down
 
 Повний цикл: push у `main` → CI → образ у GHCR → автоматичний деплой на VPS.
 
-- `ci.yml`: на кожен PR і push ruff, mypy, pytest, збірка образу і smoke-тест у ньому. На push у `main` публікує образ `ghcr.io/<owner>/<repo>:latest` і `:<sha>`.
+- `ci.yml`: на кожен PR і push ruff, mypy, pytest, збірка образу і smoke-тест у ньому. amd64 і arm64 збираються паралельно на нативних раннерах GitHub, тому весь CI займає ~2 хвилини. На push у `main` публікує образ `ghcr.io/<owner>/<repo>:latest` і `:<sha>`.
 - `deploy.yml`: після успішного CI по `main` по SSH деплоїть образ саме того коміту (`scripts/deploy.sh`). Чекає, поки контейнер стане healthy, інакше відкочує на попередній образ і падає.
 - Ручний деплой або відкат: Actions → Deploy → Run workflow, у полі `sha` вказати коміт з `main` (порожньо = останній).
 - Dependabot щотижня пропонує оновлення actions, pip-залежностей і базового образу.

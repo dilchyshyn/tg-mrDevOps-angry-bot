@@ -47,7 +47,7 @@ Healthcheck: `bot/main.py::heartbeat` кожні 30 с пише файл, а `HE
 
 ## Деплой
 
-- `ci.yml`: на PR і push: перевірки, збірка образу і smoke-тест (`import bot.main` + завантаження цитат у `--read-only` контейнері). На push у `main` публікує `ghcr.io/<repo lowercase>:latest` і `:<sha>`. Ім'я репо має великі літери, тому скрізь `${GITHUB_REPOSITORY,,}`.
+- `ci.yml`: на PR і push: перевірки, збірка образу і smoke-тест (`import bot.main` + завантаження цитат у `--read-only` контейнері). Job `image` — матриця з нативних раннерів (`ubuntu-24.04` для amd64, `ubuntu-24.04-arm` для arm64, без QEMU): кожен збирає і тестує свою архітектуру, на push у `main` пушить за digest. Job `manifest` об'єднує digest-и в `ghcr.io/<repo lowercase>:latest` і `:<sha>`. Ім'я репо має великі літери, тому скрізь `${GITHUB_REPOSITORY,,}`.
 - `deploy.yml`: `workflow_run` після успішного CI на push у `main`, або `workflow_dispatch` з `sha` для відкату. Деплоїть образ `:<sha>`, а не `:latest`. Образ мультиархітектурний (amd64 + arm64), сервер — Oracle Cloud Always Free. На VPS через `ssh vps "bash -s" < scripts/deploy.sh`: pull, `compose up --no-build`, чекання healthy (≤ 240 с, рестарт контейнера = провал), інакше відкат на попередній образ.
 - Секрети (environment `production`): `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, опційно `VPS_KNOWN_HOSTS`, `BOT_TOKEN`, `GEMINI_API_KEY`. Якщо `BOT_TOKEN` задано, `.env` на VPS (`~/mrdevops/.env`) перезаписується з секретів і `vars`. Новий параметр конфігу, який треба задавати на проді, додати і в цикл у `deploy.yml`.
 - Для роботи в групах у @BotFather має бути вимкнений privacy mode (`/setprivacy` → Disable).
