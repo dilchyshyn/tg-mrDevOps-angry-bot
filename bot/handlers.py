@@ -2,22 +2,15 @@ from aiogram import Bot, F, Router
 from aiogram.filters import CommandStart
 from aiogram.types import Message
 
-from bot.classifier import Classifier
 from bot.cooldown import Cooldown
 from bot.quote_source import QuoteSource
 from bot.responder import Responder
-from bot.triggers import calls_bot_by_name, love_phrase, mentions_krasovska
+from bot.triggers import calls_bot_by_name, devops_topic, love_phrase, mentions_krasovska
 
 router = Router(name="mrdevops")
 
 GROUP_TYPES = ("group", "supergroup")
 NO_ANSWER = "Шо? Я зараз не на звʼязку, пиши пізніше."
-
-
-def should_classify(text: str, min_length: int) -> bool:
-    """Дешевий фільтр до LLM: достатньо довге повідомлення з літерами."""
-    stripped = text.strip()
-    return len(stripped) >= min_length and any(ch.isalpha() for ch in stripped)
 
 
 async def is_addressed(message: Message, bot: Bot) -> bool:
@@ -44,11 +37,9 @@ async def on_start(message: Message) -> None:
 async def on_group_text(
     message: Message,
     bot: Bot,
-    classifier: Classifier | None,
     responder: Responder | None,
     quotes: QuoteSource,
     cooldown: Cooldown,
-    min_text_length: int,
 ) -> None:
     text = message.text or ""
 
@@ -61,21 +52,18 @@ async def on_group_text(
     # Пряме звертання без cooldown: людина сама покликала бота
     if await is_addressed(message, bot):
         answer = await responder.answer(text) if responder is not None else None
-        await message.reply(answer or NO_ANSWER)
+        # Ліміт Gemini або збій: бот не мовчить, а кидає цитату з пулу
+        await message.reply(answer or quotes.static_quote() or NO_ANSWER)
         return
 
-    if not should_classify(text, min_text_length):
+    # DevOps визначається ключовими словами, без LLM і без лімітів
+    topic = devops_topic(text)
+    if topic is None:
         return
     if not cooldown.ready(message.chat.id):
         return
-    if classifier is None:
-        return
 
-    verdict = await classifier.classify(text)
-    if not verdict.devops:
-        return
-
-    quote = await quotes.next_quote(verdict.topic)
+    quote = await quotes.next_quote(topic)
     if quote is None:
         return
 

@@ -32,7 +32,6 @@ class Responder:
                 config=types.GenerateContentConfig(
                     system_instruction=ANSWER_PROMPT,
                     max_output_tokens=400,
-                    thinking_config=types.ThinkingConfig(thinking_budget=0),
                 ),
             )
         except Exception:

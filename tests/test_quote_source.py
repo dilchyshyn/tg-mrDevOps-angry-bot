@@ -23,22 +23,28 @@ def test_pick_static_never_repeats_until_exhausted() -> None:
     assert pick_static(quotes, used, rng) is None
 
 
-async def test_static_mode_returns_none_when_exhausted() -> None:
-    source = QuoteSource(_quotes(2), mode="static", client=None, model="m", rng=random.Random(0))
-    assert await source.next_quote("docker") is not None
-    assert await source.next_quote("docker") is not None
-    assert await source.next_quote("docker") is None
+async def test_static_mode_cycles_pool_without_repeats_in_round() -> None:
+    source = QuoteSource(_quotes(3), mode="static", client=None, model="m", rng=random.Random(0))
+    first_round = [await source.next_quote("docker") for _ in range(3)]
+    assert sorted(q for q in first_round if q) == ["t0", "t1", "t2"]
+    second_round = [await source.next_quote("docker") for _ in range(3)]
+    assert sorted(q for q in second_round if q) == ["t0", "t1", "t2"]
 
 
-async def test_mixed_mode_without_client_returns_none_after_pool() -> None:
+async def test_mixed_mode_without_client_falls_back_to_pool() -> None:
     source = QuoteSource(_quotes(1), mode="mixed", client=None, model="m", rng=random.Random(0))
     assert await source.next_quote("") == "t0"
-    assert await source.next_quote("") is None
+    assert await source.next_quote("") == "t0"
 
 
-async def test_generate_mode_without_client_returns_none() -> None:
+async def test_generate_mode_without_client_falls_back_to_pool() -> None:
     source = QuoteSource(_quotes(3), mode="generate", client=None, model="m")
-    assert await source.next_quote("k8s") is None
+    assert await source.next_quote("k8s") in {"t0", "t1", "t2"}
+
+
+def test_static_quote_on_empty_pool_is_none() -> None:
+    source = QuoteSource([], mode="static", client=None, model="m")
+    assert source.static_quote() is None
 
 
 def test_bundled_quotes_file_is_valid() -> None:

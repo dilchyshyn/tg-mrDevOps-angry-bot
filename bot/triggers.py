@@ -24,6 +24,50 @@ LOVE_PHRASES: tuple[str, ...] = (
 )
 
 
+# DevOps-тема за ключовими словами, без LLM. Перша тема, що збіглась, іде в генерацію.
+# Основи слів ловлять відмінки (деплой, задеплоїв), \b відсікає «подруга», «продукти».
+_DEVOPS_TOPICS: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
+    (topic, re.compile(pattern, re.IGNORECASE))
+    for topic, pattern in (
+        ("docker", r"docker|докер|контейнер"),
+        (
+            "kubernetes",
+            r"kubernetes|k8s|кубер|helm|crash\s?loop|\bпод(?:а|у|ом|і|и|ів|ам|ами|ах)?\b",
+        ),
+        ("деплой", r"депло|deploy|\bвикат|\bрелі[зч]|rollback|відкат"),
+        ("ci/cd", r"\bci\b|\bcd\b|пайплайн|pipeline|jenkins|gitlab|github actions|\bбілд|\bbuild"),
+        (
+            "інфраструктура",
+            r"terraform|терраформ|ansible|ансібл|nginx|\bvps\b|\baws\b|azure|\bgcp\b"
+            r"|сервер|\bssh\b|linux|лінукс|ubuntu|убунт",
+        ),
+        (
+            "моніторинг",
+            r"grafana|графан|prometheus|моніторинг|мониторинг|алерт|alert"
+            r"|\bлог(?:и|ів|ах|ами)?\b|\blogs?\b",
+        ),
+        (
+            "прод",
+            r"\bпрод(?:і|у|ом|а)?\b|продакшн|production|аптайм|uptime|даунтайм|downtime"
+            r"|інцидент|incident",
+        ),
+        (
+            "девопс",
+            r"devops|девопс|\bgit\b|\bгіт\b|мерж|merge|бекап|backup|\bcron\b|\bкрон\b"
+            r"|\bdns\b|\byaml\b|\bbash\b",
+        ),
+    )
+)
+
+
+def devops_topic(text: str) -> str | None:
+    """Тема DevOps за ключовими словами або None, якщо повідомлення не про DevOps."""
+    for topic, pattern in _DEVOPS_TOPICS:
+        if pattern.search(text):
+            return topic
+    return None
+
+
 def mentions_krasovska(text: str) -> bool:
     return _KRASOVSKA_RE.search(text) is not None
 

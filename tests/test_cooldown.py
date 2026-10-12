@@ -1,5 +1,4 @@
 from bot.cooldown import Cooldown
-from bot.handlers import should_classify
 
 
 def test_cooldown_blocks_within_window() -> None:
@@ -24,10 +23,3 @@ def test_zero_cooldown_is_always_ready() -> None:
     cooldown = Cooldown(0, clock=lambda: 5.0)
     cooldown.mark(1)
     assert cooldown.ready(1)
-
-
-def test_should_classify_skips_short_and_non_letter_text() -> None:
-    assert not should_classify("ок", 8)
-    assert not should_classify("12345 67890", 8)
-    assert not should_classify("   ", 8)
-    assert should_classify("у нас знову впав docker", 8)

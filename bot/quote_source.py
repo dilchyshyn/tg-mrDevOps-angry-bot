@@ -33,7 +33,10 @@ def pick_static(quotes: Sequence[Quote], used: set[str], rng: random.Random) -> 
 
 
 class QuoteSource:
-    """Вибір цитати: статичний пул, LLM або змішаний режим."""
+    """Вибір цитати. static: пул по колу; generate: LLM; mixed: пул, після вичерпання LLM.
+
+    Якщо LLM недоступна або впала, завжди повертається цитата з пулу.
+    """
 
     def __init__(
         self,
@@ -50,14 +53,21 @@ class QuoteSource:
         self._used: set[str] = set()
         self._rng = rng or random.Random()
 
-    async def next_quote(self, topic: str) -> str | None:
-        if self._mode in ("static", "mixed"):
+    def static_quote(self) -> str | None:
+        """Цитата з пулу без повторів у межах кола. None лише для порожнього пулу."""
+        quote = pick_static(self._quotes, self._used, self._rng)
+        if quote is None:
+            self._used.clear()
             quote = pick_static(self._quotes, self._used, self._rng)
-            if quote is not None:
-                return quote.text
-            if self._mode == "static":
-                return None
-        return await self._generate(topic)
+        return quote.text if quote is not None else None
+
+    async def next_quote(self, topic: str) -> str | None:
+        pool_exhausted = len(self._used) >= len(self._quotes)
+        if self._mode == "generate" or (self._mode == "mixed" and pool_exhausted):
+            generated = await self._generate(topic)
+            if generated is not None:
+                return generated
+        return self.static_quote()
 
     async def _generate(self, topic: str) -> str | None:
         if self._client is None:
@@ -70,7 +80,6 @@ class QuoteSource:
                 config=types.GenerateContentConfig(
                     system_instruction=GENERATE_PROMPT,
                     max_output_tokens=120,
-                    thinking_config=types.ThinkingConfig(thinking_budget=0),
                 ),
             )
         except Exception:

@@ -4,8 +4,8 @@ from pathlib import Path
 
 from aiogram import Bot, Dispatcher
 from google import genai
+from google.genai import types
 
-from bot.classifier import Classifier
 from bot.cooldown import Cooldown
 from bot.handlers import router
 from bot.quote_source import QuoteSource
@@ -31,26 +31,26 @@ async def run() -> None:
 
     llm_client = None
     if settings.gemini_api_key is not None:
-        llm_client = genai.Client(api_key=settings.gemini_api_key.get_secret_value())
+        # Без ретраїв: на 429 SDK інакше чекає хвилинами, а бот має відповісти одразу
+        llm_client = genai.Client(
+            api_key=settings.gemini_api_key.get_secret_value(),
+            http_options=types.HttpOptions(retry_options=types.HttpRetryOptions(attempts=1)),
+        )
 
-    classifier = None
     responder = None
     if llm_client is not None and settings.llm_enabled:
-        classifier = Classifier(llm_client, settings.llm_model)
         responder = Responder(llm_client, settings.llm_model)
 
     dispatcher = Dispatcher()
     dispatcher.include_router(router)
-    dispatcher["classifier"] = classifier
     dispatcher["responder"] = responder
     dispatcher["quotes"] = QuoteSource(
         quotes,
         mode=settings.quote_mode,
-        client=llm_client,
+        client=llm_client if settings.llm_enabled else None,
         model=settings.llm_model,
     )
     dispatcher["cooldown"] = Cooldown(settings.cooldown_seconds)
-    dispatcher["min_text_length"] = settings.min_text_length
 
     bot = Bot(token=settings.bot_token.get_secret_value())
     heartbeat_task = asyncio.create_task(heartbeat(Path(settings.heartbeat_path)))

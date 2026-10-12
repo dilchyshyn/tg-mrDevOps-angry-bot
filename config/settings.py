@@ -12,16 +12,16 @@ class Settings(BaseSettings):
     bot_token: SecretStr
     gemini_api_key: SecretStr | None = None
 
-    # Модель для класифікації та генерації цитат (Flash — швидко і з безкоштовним рівнем)
-    llm_model: str = "gemini-2.5-flash"
+    # Модель для відповідей на звертання і генерації цитат.
+    # Lite: без thinking, швидка, з більшим безкоштовним лімітом
+    llm_model: str = "gemini-3.5-flash-lite"
     llm_enabled: bool = True
 
-    # Режим цитат: static — лише пул, generate — лише LLM, mixed — пул, далі LLM
-    quote_mode: Literal["static", "generate", "mixed"] = "mixed"
+    # Режим цитат: static — пул по колу, generate — LLM, mixed — пул, далі LLM.
+    # При збої LLM завжди береться цитата з пулу
+    quote_mode: Literal["static", "generate", "mixed"] = "static"
     quotes_path: str = "quotes/quotes.yaml"
 
-    # Повідомлення коротше за це не класифікуються (економія токенів)
-    min_text_length: int = 8
     # Пауза між DevOps-цитатами в одному чаті, секунди. 0 = без паузи
     cooldown_seconds: float = 0.0
     # Шлях до heartbeat-файлу для Docker healthcheck

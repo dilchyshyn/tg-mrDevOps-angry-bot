@@ -1,6 +1,12 @@
 import pytest
 
-from bot.triggers import LOVE_PHRASES, calls_bot_by_name, love_phrase, mentions_krasovska
+from bot.triggers import (
+    LOVE_PHRASES,
+    calls_bot_by_name,
+    devops_topic,
+    love_phrase,
+    mentions_krasovska,
+)
 
 
 @pytest.mark.parametrize(
@@ -44,3 +50,29 @@ def test_calls_bot_by_name_ignores_plain_devops() -> None:
 
 def test_love_phrase_is_from_pool() -> None:
     assert love_phrase() in LOVE_PHRASES
+
+
+@pytest.mark.parametrize(
+    ("text", "topic"),
+    [
+        ("у нас знову впав докер", "docker"),
+        ("под у crashloop", "kubernetes"),
+        ("хто задеплоїв у пʼятницю?", "деплой"),
+        ("пайплайн червоний", "ci/cd"),
+        ("terraform apply все поламав", "інфраструктура"),
+        ("сервер ліг", "інфраструктура"),
+        ("глянь логи", "моніторинг"),
+        ("на проді все горить", "прод"),
+        ("я девопс, мені можна", "девопс"),
+    ],
+)
+def test_devops_topic_detects_keywords(text: str, topic: str) -> None:
+    assert devops_topic(text) == topic
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["хто йде на піцу?", "моя подруга прийде", "купив продукти", "подивись фільм", "ок"],
+)
+def test_devops_topic_ignores_regular_chat(text: str) -> None:
+    assert devops_topic(text) is None
