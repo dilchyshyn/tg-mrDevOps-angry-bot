@@ -22,7 +22,7 @@ class Settings(BaseSettings):
 
     # Повідомлення коротше за це не класифікуються (економія токенів)
     min_text_length: int = 8
-    # Пауза між відповідями в одному чаті, секунди
-    cooldown_seconds: float = 60.0
+    # Пауза між DevOps-цитатами в одному чаті, секунди. 0 = без паузи
+    cooldown_seconds: float = 0.0
     # Шлях до heartbeat-файлу для Docker healthcheck
     heartbeat_path: str = "/tmp/mrdevops.heartbeat"

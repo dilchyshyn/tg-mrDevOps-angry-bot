@@ -32,7 +32,7 @@ Ruff: довжина рядка 100, правила `E F I B UP ASYNC`. pytest �
 2. `is_addressed` (ім'я бота за regex, `@username`, reply на бота): `Responder.answer` через Gemini, без cooldown. Без LLM або при збої відповідає `NO_ANSWER`.
 3. DevOps-гілка, кожен крок може обірвати обробку мовчки:
    - `should_classify`: дешевий фільтр без LLM (довжина ≥ `MIN_TEXT_LENGTH`, є літери);
-   - `Cooldown.ready`: пауза на чат, `mark` лише після успішного reply;
+   - `Cooldown.ready`: пауза на чат, `mark` лише після успішного reply. За замовчуванням `COOLDOWN_SECONDS=0`, тобто паузи немає;
    - `classifier is None` → мовчимо (немає `GEMINI_API_KEY` або `LLM_ENABLED=false`);
    - `Classifier.classify` → `Verdict(devops, topic)`, будь-яка помилка дає `NEGATIVE`;
    - `QuoteSource.next_quote(topic)` залежно від `QUOTE_MODE`: `static`, `generate` або `mixed` (пул без повторів, далі генерація).
