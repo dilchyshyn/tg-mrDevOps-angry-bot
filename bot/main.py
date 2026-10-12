@@ -9,6 +9,7 @@ from bot.classifier import Classifier
 from bot.cooldown import Cooldown
 from bot.handlers import router
 from bot.quote_source import QuoteSource
+from bot.responder import Responder
 from config.settings import Settings
 from quotes.loader import load_quotes
 
@@ -33,12 +34,15 @@ async def run() -> None:
         llm_client = genai.Client(api_key=settings.gemini_api_key.get_secret_value())
 
     classifier = None
+    responder = None
     if llm_client is not None and settings.llm_enabled:
         classifier = Classifier(llm_client, settings.llm_model)
+        responder = Responder(llm_client, settings.llm_model)
 
     dispatcher = Dispatcher()
     dispatcher.include_router(router)
     dispatcher["classifier"] = classifier
+    dispatcher["responder"] = responder
     dispatcher["quotes"] = QuoteSource(
         quotes,
         mode=settings.quote_mode,
@@ -46,6 +50,7 @@ async def run() -> None:
         model=settings.llm_model,
     )
     dispatcher["cooldown"] = Cooldown(settings.cooldown_seconds)
+    dispatcher["love_cooldown"] = Cooldown(settings.cooldown_seconds)
     dispatcher["min_text_length"] = settings.min_text_length
 
     bot = Bot(token=settings.bot_token.get_secret_value())
