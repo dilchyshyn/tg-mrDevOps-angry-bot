@@ -48,6 +48,10 @@ Ruff: довжина рядка 100, правила `E F I B UP ASYNC`. pytest �
 
 Стан (cooldown, використані id цитат) тільки в пам'яті процесу, після рестарту скидається.
 
+Поза групою бот реагує лише на `/start` в особистих повідомленнях (`on_start`), решту ігнорує.
+
+Без `GEMINI_API_KEY` клієнт не створюється, а `LLM_ENABLED=false` вимикає і `Responder` (у DI тоді лежить `None`), і генерацію цитат (`QuoteSource` отримує `client=None` і бере все з пулу).
+
 Один `genai.Client` спільний для генерації цитат і `Responder`. Обидва викликають `client.aio.models.generate_content` з `system_instruction`; у тестах мокається саме цей ланцюжок (див. фейки в `tests/test_responder.py`). Клієнт створюється з `HttpRetryOptions(attempts=1)`: інакше на 429 SDK ретраїть хвилинами, і бот довго не відповідає.
 
 Вибір моделі: `gemini-3.5-flash-lite` відповідає без thinking. `thinking_config` не передається, бо 3.x відхиляє `thinking_budget=0`, а `gemini-3.8-flash` не підтримує `thinking_level=minimal` і спалює ~400 токенів на роздуми. Старі `gemini-2.0-*` повертають 404. Безкоштовні ліміти видно тільки в AI Studio (aistudio.google.com/rate-limit), рахуються на проєкт і модель, денні скидаються опівночі за тихоокеанським часом.
@@ -58,6 +62,7 @@ Healthcheck: `bot/main.py::heartbeat` кожні 30 с пише файл, а `HE
 
 - `ci.yml`: на PR і push: перевірки, збірка образу і smoke-тест (`import bot.main` + завантаження цитат у `--read-only` контейнері). Job `image` — матриця з нативних раннерів (`ubuntu-24.04` для amd64, `ubuntu-24.04-arm` для arm64, без QEMU): кожен збирає і тестує свою архітектуру, на push у `main` пушить за digest. Job `manifest` об'єднує digest-и в `ghcr.io/<repo lowercase>:latest` і `:<sha>`. Ім'я репо має великі літери, тому скрізь `${GITHUB_REPOSITORY,,}`.
 - `deploy.yml`: `workflow_run` після успішного CI на push у `main`, або `workflow_dispatch` з `sha` для відкату. Деплоїть образ `:<sha>`, а не `:latest`. Образ мультиархітектурний (amd64 + arm64), сервер — Oracle Cloud Always Free. На VPS через `ssh vps "bash -s" < scripts/deploy.sh`: pull, `compose up --no-build`, чекання healthy (≤ 240 с, рестарт контейнера = провал), інакше відкат на попередній образ.
+- `.github/dependabot.yml`: щотижневі PR з оновленнями actions, pip-залежностей і базового образу.
 - Секрети (environment `production`): `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, опційно `VPS_KNOWN_HOSTS`, `BOT_TOKEN`, `GEMINI_API_KEY`. Якщо `BOT_TOKEN` задано, `.env` на VPS (`~/mrdevops/.env`) перезаписується з секретів і `vars`. Новий параметр конфігу, який треба задавати на проді, додати і в цикл у `deploy.yml`.
 - Списки людей і несекретні параметри на проді — GitHub Variables того ж environment: `PROTECTED_USERS`, `QUEEN_USERS`, `QUOTE_MODE`, `COOLDOWN_SECONDS`, `LLM_MODEL`, `LLM_ENABLED`. Змінювати через `gh variable set <NAME> --env production --body "..."`, потім `gh workflow run deploy.yml`, код чіпати не треба. Ручні правки `.env` на сервері перезапише наступний деплой. Королеву свідомо продубльовано в `PROTECTED_USERS` як запасний захист: не прибирати.
 - Конкретні username людей у репозиторій (код, тести, документацію) не вписувати, вони живуть лише в GitHub Variables. У тестах вигадані імена.
