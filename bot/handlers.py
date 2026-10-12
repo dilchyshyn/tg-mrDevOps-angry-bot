@@ -5,8 +5,14 @@ from aiogram.types import Message
 from bot.cooldown import Cooldown
 from bot.protected import ProtectedUsers
 from bot.quote_source import QuoteSource
-from bot.responder import Responder
-from bot.triggers import calls_bot_by_name, devops_topic, love_phrase, mentions_krasovska
+from bot.responder import Responder, Tone
+from bot.triggers import (
+    calls_bot_by_name,
+    devops_topic,
+    love_phrase,
+    mentions_krasovska,
+    queen_phrase,
+)
 
 router = Router(name="mrdevops")
 
@@ -43,9 +49,12 @@ async def on_group_text(
     quotes: QuoteSource,
     cooldown: Cooldown,
     protected_users: ProtectedUsers,
+    queen_users: ProtectedUsers,
 ) -> None:
     text = message.text or ""
-    protected = protected_users.contains(message.from_user)
+    queen = queen_users.contains(message.from_user)
+    protected = queen or protected_users.contains(message.from_user)
+    tone: Tone = "queen" if queen else "polite" if protected else "rude"
 
     # Красовська важливіша за все інше, відповідь завжди, без cooldown.
     # Про неї LLM нічого не генерує.
@@ -55,13 +64,22 @@ async def on_group_text(
 
     # Пряме звертання без cooldown: людина сама покликала бота
     if await is_addressed(message, bot):
-        answer = await responder.answer(text, polite=protected) if responder else None
+        answer = await responder.answer(text, tone=tone) if responder else None
+        if queen:
+            await message.reply(answer or queen_phrase())
+            return
         if protected:
             # Захищеним ніколи не йде цитата з матами, навіть при збої LLM
             await message.reply(answer or POLITE_NO_ANSWER)
             return
         # Ліміт Gemini або збій: бот не мовчить, а кидає цитату з пулу
         await message.reply(answer or quotes.static_quote() or NO_ANSWER)
+        return
+
+    # Королеві на DevOps замість грубої цитати комплімент, звичайні повідомлення без реакції
+    if queen:
+        if devops_topic(text) is not None:
+            await message.reply(queen_phrase())
         return
 
     if protected:

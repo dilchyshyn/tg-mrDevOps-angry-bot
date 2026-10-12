@@ -54,8 +54,12 @@ async def run() -> None:
     dispatcher["cooldown"] = Cooldown(settings.cooldown_seconds)
     protected_users = ProtectedUsers.parse(settings.protected_users)
     dispatcher["protected_users"] = protected_users
+    queen_users = ProtectedUsers.parse(settings.queen_users)
+    dispatcher["queen_users"] = queen_users
     logger.info(
-        "Захищених користувачів: %d", len(protected_users.ids) + len(protected_users.usernames)
+        "Захищених користувачів: %d, королев: %d",
+        len(protected_users.ids) + len(protected_users.usernames),
+        len(queen_users.ids) + len(queen_users.usernames),
     )
 
     bot = Bot(token=settings.bot_token.get_secret_value())

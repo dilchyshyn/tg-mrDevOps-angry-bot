@@ -1,4 +1,5 @@
 import logging
+from typing import Literal
 
 from google import genai
 from google.genai import types
@@ -22,7 +23,23 @@ POLITE_PROMPT = (
     "чи техніку, дай корисну відповідь. "
     "Відповідай ЛИШЕ текстом відповіді, без лапок і пояснень."
 )
+# Для QUEEN_USERS: звертання як до королеви
+QUEEN_PROMPT = (
+    "Ти mrDevOps, бот у груповому чаті. До тебе звернулась Настя, королева цього чату "
+    "і найкраща жінка у світі. Звертайся до неї як до королеви («Ваша Величносте», "
+    "«моя королево»), з захопленням, повагою і теплом. Відповідай коротко, до трьох "
+    "речень, українською. Без матів, грубощів і будь-якого сексуального підтексту. "
+    "Якщо питання про DevOps чи техніку, дай корисну відповідь по суті. "
+    "Відповідай ЛИШЕ текстом відповіді, без лапок і пояснень."
+)
 MAX_ANSWER_LENGTH = 1000
+
+Tone = Literal["rude", "polite", "queen"]
+_PROMPTS: dict[Tone, str] = {
+    "rude": ANSWER_PROMPT,
+    "polite": POLITE_PROMPT,
+    "queen": QUEEN_PROMPT,
+}
 
 
 class Responder:
@@ -32,13 +49,13 @@ class Responder:
         self._client = client
         self._model = model
 
-    async def answer(self, text: str, polite: bool = False) -> str | None:
+    async def answer(self, text: str, tone: Tone = "rude") -> str | None:
         try:
             response = await self._client.aio.models.generate_content(
                 model=self._model,
                 contents=text,
                 config=types.GenerateContentConfig(
-                    system_instruction=POLITE_PROMPT if polite else ANSWER_PROMPT,
+                    system_instruction=_PROMPTS[tone],
                     max_output_tokens=400,
                 ),
             )

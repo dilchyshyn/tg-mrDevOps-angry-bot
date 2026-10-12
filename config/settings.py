@@ -26,5 +26,7 @@ class Settings(BaseSettings):
     cooldown_seconds: float = 0.0
     # З цими людьми бот не грубить: Telegram ID або @username через кому
     protected_users: str = ""
+    # До цих людей бот звертається як до королеви. Вони автоматично захищені
+    queen_users: str = ""
     # Шлях до heartbeat-файлу для Docker healthcheck
     heartbeat_path: str = "/tmp/mrdevops.heartbeat"

@@ -1,6 +1,6 @@
 from typing import Any
 
-from bot.responder import ANSWER_PROMPT, MAX_ANSWER_LENGTH, POLITE_PROMPT, Responder
+from bot.responder import ANSWER_PROMPT, MAX_ANSWER_LENGTH, POLITE_PROMPT, QUEEN_PROMPT, Responder
 
 
 class _FakeResponse:
@@ -48,10 +48,11 @@ async def test_answer_is_truncated() -> None:
     assert answer is not None and len(answer) == MAX_ANSWER_LENGTH
 
 
-async def test_polite_flag_switches_prompt() -> None:
+async def test_tone_switches_prompt() -> None:
     client = _FakeClient("ok")
     responder = Responder(client, "model")  # type: ignore[arg-type]
     await responder.answer("питання")
-    await responder.answer("питання", polite=True)
+    await responder.answer("питання", tone="polite")
+    await responder.answer("питання", tone="queen")
     prompts = [call["config"].system_instruction for call in client.aio.models.calls]
-    assert prompts == [ANSWER_PROMPT, POLITE_PROMPT]
+    assert prompts == [ANSWER_PROMPT, POLITE_PROMPT, QUEEN_PROMPT]
