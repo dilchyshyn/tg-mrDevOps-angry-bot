@@ -39,11 +39,23 @@ make down
 
 ## Деплой
 
-- `ci.yml`: ruff, mypy, pytest на кожен PR і push. На push в `main` збирає образ і публікує його в GHCR.
-- `deploy.yml`: після успішного CI по `main` підключається по SSH до VPS і оновлює контейнер через `docker compose`.
+Повний цикл: push у `main` → CI → образ у GHCR → автоматичний деплой на VPS.
 
-Секрети в GitHub (environment `production`): `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`.
-На VPS має бути встановлений Docker з compose, а `.env` з `BOT_TOKEN` і `GEMINI_API_KEY` лежить у `~/mrdevops/.env`.
+- `ci.yml`: на кожен PR і push ruff, mypy, pytest, збірка образу і smoke-тест у ньому. На push у `main` публікує образ `ghcr.io/<owner>/<repo>:latest` і `:<sha>`.
+- `deploy.yml`: після успішного CI по `main` по SSH деплоїть образ саме того коміту (`scripts/deploy.sh`). Чекає, поки контейнер стане healthy, інакше відкочує на попередній образ і падає.
+- Ручний деплой або відкат: Actions → Deploy → Run workflow, у полі `sha` вказати коміт з `main` (порожньо = останній).
+- Dependabot щотижня пропонує оновлення actions, pip-залежностей і базового образу.
+
+GitHub, environment `production`:
+
+| Що | Тип | Обов'язково |
+|---|---|---|
+| `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY` | secret | так |
+| `VPS_KNOWN_HOSTS` (вивід `ssh-keyscan -H <host>`) | secret | бажано, інакше ключ хоста не перевіряється |
+| `BOT_TOKEN`, `GEMINI_API_KEY` | secret | ні: якщо `BOT_TOKEN` задано, `.env` на сервері генерується з секретів |
+| `LLM_MODEL`, `LLM_ENABLED`, `QUOTE_MODE`, `COOLDOWN_SECONDS`, `MIN_TEXT_LENGTH` | variable | ні, порожні беруться з дефолтів |
+
+На VPS потрібен Docker з compose, користувач `VPS_USER` у групі `docker`. Якщо `BOT_TOKEN` у секретах немає, `.env` треба покласти вручну в `~/mrdevops/.env`. Сервер логіниться в GHCR тимчасовим токеном джоба, тому образ може бути приватним.
 
 ## Структура
 
