@@ -24,5 +24,7 @@ class Settings(BaseSettings):
 
     # Пауза між DevOps-цитатами в одному чаті, секунди. 0 = без паузи
     cooldown_seconds: float = 0.0
+    # З цими людьми бот не грубить: Telegram ID або @username через кому
+    protected_users: str = ""
     # Шлях до heartbeat-файлу для Docker healthcheck
     heartbeat_path: str = "/tmp/mrdevops.heartbeat"

@@ -8,6 +8,7 @@ from google.genai import types
 
 from bot.cooldown import Cooldown
 from bot.handlers import router
+from bot.protected import ProtectedUsers
 from bot.quote_source import QuoteSource
 from bot.responder import Responder
 from config.settings import Settings
@@ -51,6 +52,11 @@ async def run() -> None:
         model=settings.llm_model,
     )
     dispatcher["cooldown"] = Cooldown(settings.cooldown_seconds)
+    protected_users = ProtectedUsers.parse(settings.protected_users)
+    dispatcher["protected_users"] = protected_users
+    logger.info(
+        "Захищених користувачів: %d", len(protected_users.ids) + len(protected_users.usernames)
+    )
 
     bot = Bot(token=settings.bot_token.get_secret_value())
     heartbeat_task = asyncio.create_task(heartbeat(Path(settings.heartbeat_path)))

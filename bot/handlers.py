@@ -3,6 +3,7 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message
 
 from bot.cooldown import Cooldown
+from bot.protected import ProtectedUsers
 from bot.quote_source import QuoteSource
 from bot.responder import Responder
 from bot.triggers import calls_bot_by_name, devops_topic, love_phrase, mentions_krasovska
@@ -11,6 +12,7 @@ router = Router(name="mrdevops")
 
 GROUP_TYPES = ("group", "supergroup")
 NO_ANSWER = "Шо? Я зараз не на звʼязку, пиши пізніше."
+POLITE_NO_ANSWER = "Вибач, зараз не можу відповісти. Напиши трохи пізніше 🙂"
 
 
 async def is_addressed(message: Message, bot: Bot) -> bool:
@@ -40,8 +42,10 @@ async def on_group_text(
     responder: Responder | None,
     quotes: QuoteSource,
     cooldown: Cooldown,
+    protected_users: ProtectedUsers,
 ) -> None:
     text = message.text or ""
+    protected = protected_users.contains(message.from_user)
 
     # Красовська важливіша за все інше, відповідь завжди, без cooldown.
     # Про неї LLM нічого не генерує.
@@ -51,9 +55,16 @@ async def on_group_text(
 
     # Пряме звертання без cooldown: людина сама покликала бота
     if await is_addressed(message, bot):
-        answer = await responder.answer(text) if responder is not None else None
+        answer = await responder.answer(text, polite=protected) if responder else None
+        if protected:
+            # Захищеним ніколи не йде цитата з матами, навіть при збої LLM
+            await message.reply(answer or POLITE_NO_ANSWER)
+            return
         # Ліміт Gemini або збій: бот не мовчить, а кидає цитату з пулу
         await message.reply(answer or quotes.static_quote() or NO_ANSWER)
+        return
+
+    if protected:
         return
 
     # DevOps визначається ключовими словами, без LLM і без лімітів

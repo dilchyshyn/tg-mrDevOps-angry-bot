@@ -72,6 +72,7 @@ jobs:
           LLM_ENABLED: ${{ vars.LLM_ENABLED }}
           QUOTE_MODE: ${{ vars.QUOTE_MODE }}
           COOLDOWN_SECONDS: ${{ vars.COOLDOWN_SECONDS }}
+          PROTECTED_USERS: ${{ vars.PROTECTED_USERS }}
         run: |
           if [ -z "$BOT_TOKEN" ]; then
             echo "BOT_TOKEN не задано в секретах, використовується .env на сервері"
@@ -79,7 +80,7 @@ jobs:
           fi
           # Порожні значення не пишемо, щоб спрацювали дефолти з config/settings.py
           for name in BOT_TOKEN GEMINI_API_KEY LLM_MODEL LLM_ENABLED QUOTE_MODE \
-                      COOLDOWN_SECONDS; do
+                      COOLDOWN_SECONDS PROTECTED_USERS; do
             if [ -n "${!name}" ]; then printf '%s=%s\n' "$name" "${!name}"; fi
           done | ssh vps "umask 077 && cat > ~/mrdevops/.env"
 
