@@ -29,10 +29,11 @@ Ruff: довжина рядка 100, правила `E F I B UP ASYNC`. pytest �
 Потік повідомлення в групі (`bot/handlers.py::on_group_text`), перша гілка, що спрацювала, завершує обробку:
 
 1. `mentions_krasovska` (`bot/triggers.py`): статична фраза з `LOVE_PHRASES` на кожне повідомлення, без cooldown. LLM про неї не викликається навіть при звертанні до бота.
-Перед гілками рахується `protected = protected_users.contains(message.from_user)` (`bot/protected.py`, з `PROTECTED_USERS`).
+Перед гілками рахуються `queen` (`QUEEN_USERS`) і `protected` (`PROTECTED_USERS` або queen), обидва через `ProtectedUsers` (`bot/protected.py`), і з них `tone`: `queen` / `polite` / `rude` для `Responder`.
 
-2. `is_addressed` (ім'я бота за regex, `@username`, reply на бота): `Responder.answer(text, polite=protected)` через Gemini, без cooldown. Захищеним — `POLITE_PROMPT` і при збої `POLITE_NO_ANSWER`, ніколи не цитата з пулу. Без LLM або при збої (найчастіше 429) відповідає `quotes.static_quote()`, і лише при порожньому пулі `NO_ANSWER`.
-3. DevOps-гілка (захищеним не відповідає взагалі):
+2. `is_addressed` (ім'я бота за regex, `@username`, reply на бота): `Responder.answer(text, tone=tone)` через Gemini, без cooldown. Королеві при збої `queen_phrase()`, захищеним `POLITE_NO_ANSWER`, ніколи не цитата з пулу. Без LLM або при збої (найчастіше 429) відповідає `quotes.static_quote()`, і лише при порожньому пулі `NO_ANSWER`.
+3. Королева: на DevOps-слово `queen_phrase()`, на інше тиша. Захищені: тиша.
+4. DevOps-гілка для решти:
    - `devops_topic` (`bot/triggers.py`): regex-и за основами слів, повертає тему або `None`. LLM тут не викликається, бо безкоштовний ліміт Gemini (~20 запитів на добу на модель) згорав на перевірці кожного повідомлення. Нові слова додавати в `_DEVOPS_TOPICS` разом з тестом у `tests/test_triggers.py`, включно з негативним прикладом, щоб не ловити звичайні слова («подруга», «продукти»);
    - `Cooldown.ready`: пауза на чат, `mark` лише після успішного reply. За замовчуванням `COOLDOWN_SECONDS=0`, тобто паузи немає;
    - `QuoteSource.next_quote(topic)` залежно від `QUOTE_MODE`: `static` (за замовчуванням, пул по колу без повторів у межах кола), `generate` або `mixed`. При збої LLM завжди повертає цитату з пулу.
@@ -65,7 +66,7 @@ Healthcheck: `bot/main.py::heartbeat` кожні 30 с пише файл, а `HE
 
 - Пул у `quotes/quotes.yaml`. Поля: `id` (унікальний), `text`, `lang` (`uk` або `surzhyk`), `tags`. `quotes/loader.py` падає на дублях id і невідомій мові.
 - Стиль грубий, з матами. Заборонено сексуальне глузування з жінок, жарти про національності, релігії, сексуальну орієнтацію і реальних людей. Ці межі діють і в промптах (`GENERATE_PROMPT` у `bot/quote_source.py`, `ANSWER_PROMPT` у `bot/responder.py`).
-- Єдиний виняток щодо реальних людей: Красовська, викладачка англійської. Про неї тільки тепло, без матів і без жодного сексуального підтексту, і тільки статичні фрази.
+- Винятки щодо реальних людей: Красовська (викладачка англійської) і користувачі з `QUEEN_USERS` (дівчина власника). Тільки тепло, без матів і без жодного сексуального підтексту. Про Красовську лише статичні фрази, до королеви — `QUEEN_PROMPT` і `QUEEN_PHRASES`.
 - Після змін у пулі запускати `make test` (`test_bundled_quotes_file_is_valid` перевіряє файл).
 
 ## Git

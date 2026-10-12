@@ -12,6 +12,8 @@ Telegram-бот, який у груповому чаті відповідає п
 
 **Захищені люди** (`PROTECTED_USERS`: Telegram ID або @username через кому). Їм бот не кидає DevOps-цитат, а на звертання відповідає ввічливо, без матів, навіть коли Gemini недоступний. Фрази про Красовську вони отримують як усі. На сервері список задається у GitHub: Settings → Environments → `production` → Variables → `PROTECTED_USERS`, після чого треба перезапустити Deploy.
 
+**Королеви** (`QUEEN_USERS`, той самий формат). На звертання бот відповідає як королеві («Ваша Величносте», «моя королево»), а на DevOps-повідомлення замість цитати надсилає комплімент (`QUEEN_PHRASES` у `bot/triggers.py`). На звичайні повідомлення не реагує. Королеви автоматично захищені від грубощів.
+
 Gemini (`gemini-3.5-flash-lite`) витрачається лише на прямі звертання до бота, тож безкоштовного ліміту вистачає надовго.
 
 ## Налаштування
@@ -83,7 +85,7 @@ GitHub, environment `production`:
 | `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY` | secret | так |
 | `VPS_KNOWN_HOSTS` (вивід `ssh-keyscan -H <host>`) | secret | бажано, інакше ключ хоста не перевіряється |
 | `BOT_TOKEN`, `GEMINI_API_KEY` | secret | ні: якщо `BOT_TOKEN` задано, `.env` на сервері генерується з секретів |
-| `LLM_MODEL`, `LLM_ENABLED`, `QUOTE_MODE`, `COOLDOWN_SECONDS`, `PROTECTED_USERS` | variable | ні, порожні беруться з дефолтів |
+| `LLM_MODEL`, `LLM_ENABLED`, `QUOTE_MODE`, `COOLDOWN_SECONDS`, `PROTECTED_USERS`, `QUEEN_USERS` | variable | ні, порожні беруться з дефолтів |
 
 На VPS потрібен Docker з compose, користувач `VPS_USER` у групі `docker`. Якщо `BOT_TOKEN` у секретах немає, `.env` треба покласти вручну в `~/mrdevops/.env`. Сервер логіниться в GHCR тимчасовим токеном джоба, тому образ може бути приватним.
 
