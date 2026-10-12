@@ -7,3 +7,24 @@ __pycache__/
 .ruff_cache/
 build/
 dist/
+
+# Секрети: будь-які варіанти .env, крім шаблону
+.env.*
+!.env.example
+*.pem
+*.key
+
+# IDE і редактори
+.idea/
+.vscode/
+*.swp
+*~
+
+# Python
+*.py[cod]
+.coverage
+htmlcov/
+
+# ОС
+.DS_Store
+Thumbs.db
