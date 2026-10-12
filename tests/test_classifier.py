@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 
 from bot.classifier import Classifier, Verdict, parse_verdict
@@ -29,8 +31,10 @@ class _FakeResponse:
 class _FakeModels:
     def __init__(self, result: str | Exception) -> None:
         self._result = result
+        self.calls: list[dict[str, Any]] = []
 
-    async def generate_content(self, **_: object) -> _FakeResponse:
+    async def generate_content(self, **kwargs: Any) -> _FakeResponse:
+        self.calls.append(kwargs)
         if isinstance(self._result, Exception):
             raise self._result
         return _FakeResponse(self._result)
@@ -54,3 +58,10 @@ async def test_classify_uses_llm_verdict() -> None:
 async def test_classify_api_error_is_negative() -> None:
     classifier = Classifier(_FakeClient(RuntimeError("boom")), "model")  # type: ignore[arg-type]
     assert await classifier.classify("будь-що") == Verdict(False, "")
+
+
+async def test_classify_disables_thinking() -> None:
+    client = _FakeClient('{"devops": true, "topic": "k8s"}')
+    await Classifier(client, "model").classify("под впав")  # type: ignore[arg-type]
+    config = client.aio.models.calls[0]["config"]
+    assert config.thinking_config.thinking_budget == 0

@@ -59,6 +59,8 @@ class Classifier:
                 config=types.GenerateContentConfig(
                     system_instruction=CLASSIFY_PROMPT,
                     max_output_tokens=64,
+                    # Без цього thinking-токени 2.5 Flash з'їдають ліміт і JSON обрізається
+                    thinking_config=types.ThinkingConfig(thinking_budget=0),
                 ),
             )
         except Exception:

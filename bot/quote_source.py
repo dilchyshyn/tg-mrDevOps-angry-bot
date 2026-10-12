@@ -70,6 +70,7 @@ class QuoteSource:
                 config=types.GenerateContentConfig(
                     system_instruction=GENERATE_PROMPT,
                     max_output_tokens=120,
+                    thinking_config=types.ThinkingConfig(thinking_budget=0),
                 ),
             )
         except Exception:
