@@ -29,8 +29,10 @@ Ruff: довжина рядка 100, правила `E F I B UP ASYNC`. pytest �
 Потік повідомлення в групі (`bot/handlers.py::on_group_text`), перша гілка, що спрацювала, завершує обробку:
 
 1. `mentions_krasovska` (`bot/triggers.py`): статична фраза з `LOVE_PHRASES` на кожне повідомлення, без cooldown. LLM про неї не викликається навіть при звертанні до бота.
-2. `is_addressed` (ім'я бота за regex, `@username`, reply на бота): `Responder.answer` через Gemini, без cooldown. Без LLM або при збої (найчастіше 429) відповідає `quotes.static_quote()`, і лише при порожньому пулі `NO_ANSWER`.
-3. DevOps-гілка:
+Перед гілками рахується `protected = protected_users.contains(message.from_user)` (`bot/protected.py`, з `PROTECTED_USERS`).
+
+2. `is_addressed` (ім'я бота за regex, `@username`, reply на бота): `Responder.answer(text, polite=protected)` через Gemini, без cooldown. Захищеним — `POLITE_PROMPT` і при збої `POLITE_NO_ANSWER`, ніколи не цитата з пулу. Без LLM або при збої (найчастіше 429) відповідає `quotes.static_quote()`, і лише при порожньому пулі `NO_ANSWER`.
+3. DevOps-гілка (захищеним не відповідає взагалі):
    - `devops_topic` (`bot/triggers.py`): regex-и за основами слів, повертає тему або `None`. LLM тут не викликається, бо безкоштовний ліміт Gemini (~20 запитів на добу на модель) згорав на перевірці кожного повідомлення. Нові слова додавати в `_DEVOPS_TOPICS` разом з тестом у `tests/test_triggers.py`, включно з негативним прикладом, щоб не ловити звичайні слова («подруга», «продукти»);
    - `Cooldown.ready`: пауза на чат, `mark` лише після успішного reply. За замовчуванням `COOLDOWN_SECONDS=0`, тобто паузи немає;
    - `QuoteSource.next_quote(topic)` залежно від `QUOTE_MODE`: `static` (за замовчуванням, пул по колу без повторів у межах кола), `generate` або `mixed`. При збої LLM завжди повертає цитату з пулу.

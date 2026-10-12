@@ -10,6 +10,8 @@ Telegram-бот, який у груповому чаті відповідає п
 2. **Звертання до бота.** «мрдевопс», «мр девопс», «mrDevOps», «містер девопс», `@username` бота або reply на його повідомлення: Gemini відповідає на питання в стилі бота. Cooldown тут не діє. Якщо Gemini недоступний (ліміт, збій), бот відповідає цитатою з пулу.
 3. **DevOps.** Тема визначається ключовими словами (`devops_topic` у `bot/triggers.py`: докер, под, деплой, пайплайн, сервер, логи, прод тощо), без Gemini і без лімітів. Бот відповідає цитатою з `quotes/quotes.yaml` у reply: без повторів, поки не пройде все коло. Паузи за замовчуванням немає (`COOLDOWN_SECONDS=0`). У режимі `QUOTE_MODE=generate` або `mixed` цитати генерує Gemini, а при збої береться пул.
 
+**Захищені люди** (`PROTECTED_USERS`: Telegram ID або @username через кому). Їм бот не кидає DevOps-цитат, а на звертання відповідає ввічливо, без матів, навіть коли Gemini недоступний. Фрази про Красовську вони отримують як усі. На сервері список задається у GitHub: Settings → Environments → `production` → Variables → `PROTECTED_USERS`, після чого треба перезапустити Deploy.
+
 Gemini (`gemini-3.5-flash-lite`) витрачається лише на прямі звертання до бота, тож безкоштовного ліміту вистачає надовго.
 
 ## Налаштування
@@ -81,7 +83,7 @@ GitHub, environment `production`:
 | `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY` | secret | так |
 | `VPS_KNOWN_HOSTS` (вивід `ssh-keyscan -H <host>`) | secret | бажано, інакше ключ хоста не перевіряється |
 | `BOT_TOKEN`, `GEMINI_API_KEY` | secret | ні: якщо `BOT_TOKEN` задано, `.env` на сервері генерується з секретів |
-| `LLM_MODEL`, `LLM_ENABLED`, `QUOTE_MODE`, `COOLDOWN_SECONDS` | variable | ні, порожні беруться з дефолтів |
+| `LLM_MODEL`, `LLM_ENABLED`, `QUOTE_MODE`, `COOLDOWN_SECONDS`, `PROTECTED_USERS` | variable | ні, порожні беруться з дефолтів |
 
 На VPS потрібен Docker з compose, користувач `VPS_USER` у групі `docker`. Якщо `BOT_TOKEN` у секретах немає, `.env` треба покласти вручну в `~/mrdevops/.env`. Сервер логіниться в GHCR тимчасовим токеном джоба, тому образ може бути приватним.
 
