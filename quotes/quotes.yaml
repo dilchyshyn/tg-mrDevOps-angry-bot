@@ -154,3 +154,107 @@ quotes:
     text: "Сука блядь, живи тихо, ебать, не ебу мозок, сука, блядь."
     lang: surzhyk
     tags: [life]
+  - id: docker-04
+    text: "Блядь, на локалці працює, а в контейнері пиздець. Сука, класика."
+    lang: surzhyk
+    tags: [docker]
+  - id: docker-05
+    text: "Сука, образ на чотири гіга, ебать, ти туди весь інтернет запхав?"
+    lang: surzhyk
+    tags: [docker]
+  - id: docker-06
+    text: "Блядь, volume не примонтував, дані проїбав, сука, вітаю нахуй."
+    lang: uk
+    tags: [docker]
+  - id: k8s-04
+    text: "Сука, ямл на триста рядків, а под все одно лежить, блядь."
+    lang: surzhyk
+    tags: [k8s]
+  - id: k8s-05
+    text: "Блядь, OOMKilled, ебать, памʼяті дав як хом'яку, нахуй."
+    lang: surzhyk
+    tags: [k8s]
+  - id: k8s-06
+    text: "Сука, кубер не ламається, кубер просто ебе мозок, блядь."
+    lang: surzhyk
+    tags: [k8s]
+  - id: cicd-04
+    text: "Блядь, пайплайн зелений, а прод червоний, сука, магія нахуй."
+    lang: uk
+    tags: [cicd]
+  - id: cicd-05
+    text: "Сука, тести пропустив, бо поспішав, блядь, тепер поспішай фіксити."
+    lang: uk
+    tags: [cicd]
+  - id: cicd-06
+    text: "Блядь, retry, retry, retry, ебать, може воно само, нахуй."
+    lang: surzhyk
+    tags: [cicd]
+  - id: deploy-04
+    text: "Сука, деплой у пʼятницю ввечері, блядь, ти шо, безсмертний?"
+    lang: surzhyk
+    tags: [deploy]
+  - id: deploy-05
+    text: "Блядь, задеплоїв і пішов спати, сука, а прод не спить, нахуй."
+    lang: uk
+    tags: [deploy]
+  - id: deploy-06
+    text: "Сука, хотфікс на хотфікс, ебать, і хотфіксом поганяє, блядь."
+    lang: surzhyk
+    tags: [deploy]
+  - id: prod-04
+    text: "Блядь, на проді не тестують, сука, на проді плачуть, нахуй."
+    lang: uk
+    tags: [prod]
+  - id: prod-05
+    text: "Сука, аптайм дев'яносто відсотків, ебать, решта дев'ять на чаї, блядь."
+    lang: surzhyk
+    tags: [prod]
+  - id: prod-06
+    text: "Блядь, хто чіпав прод, сука, признавайся, бо логи все бачать."
+    lang: uk
+    tags: [prod]
+  - id: linux-03
+    text: "Сука, chmod 777, ебать, безпека як двері без замка, блядь."
+    lang: surzhyk
+    tags: [linux]
+  - id: linux-04
+    text: "Блядь, диск на сто відсотків, ебать, логи жеруть сервер, нахуй."
+    lang: surzhyk
+    tags: [linux, logs]
+  - id: linux-05
+    text: "Сука, rm -rf не туди, ебать, тепер у тебе вільно, блядь, все."
+    lang: surzhyk
+    tags: [linux]
+  - id: monitoring-03
+    text: "Блядь, алерт о третій ночі, сука, а дашборд каже все зелене, нахуй."
+    lang: uk
+    tags: [monitoring]
+  - id: logs-02
+    text: "Сука, в логах тільки «error», ебать, дякую, блядь, дуже допомогло."
+    lang: surzhyk
+    tags: [logs]
+  - id: git-03
+    text: "Блядь, мерж-конфлікт на пів екрана, сука, хто це писав, нахуй."
+    lang: uk
+    tags: [git]
+  - id: git-04
+    text: "Сука, коміт «fix», потім «fix2», потім «нахуй», блядь, історія."
+    lang: surzhyk
+    tags: [git]
+  - id: tf-03
+    text: "Блядь, terraform destroy замість plan, сука, хмара чиста, нахуй."
+    lang: surzhyk
+    tags: [terraform]
+  - id: backup-03
+    text: "Сука, бекап є, а відновити ніхто не пробував, блядь, лотерея."
+    lang: uk
+    tags: [backup]
+  - id: general-05
+    text: "Блядь, працює — не чіпай, не працює — теж не чіпай, сука, само."
+    lang: uk
+    tags: [general]
+  - id: general-06
+    text: "Сука, «в мене все працює», ебать, тоді неси свій ноут на прод, блядь."
+    lang: surzhyk
+    tags: [general]
