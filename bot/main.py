@@ -50,7 +50,6 @@ async def run() -> None:
         model=settings.llm_model,
     )
     dispatcher["cooldown"] = Cooldown(settings.cooldown_seconds)
-    dispatcher["love_cooldown"] = Cooldown(settings.cooldown_seconds)
     dispatcher["min_text_length"] = settings.min_text_length
 
     bot = Bot(token=settings.bot_token.get_secret_value())

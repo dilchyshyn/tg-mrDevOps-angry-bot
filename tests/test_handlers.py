@@ -32,7 +32,6 @@ async def _handle(message: Any, **overrides: Any) -> dict[str, Any]:
         "responder": SimpleNamespace(answer=AsyncMock(return_value="відповідь")),
         "quotes": SimpleNamespace(next_quote=AsyncMock(return_value="цитата")),
         "cooldown": Cooldown(60, clock=lambda: 0.0),
-        "love_cooldown": Cooldown(60, clock=lambda: 0.0),
         "min_text_length": 8,
     }
     deps.update(overrides)
@@ -48,12 +47,13 @@ async def test_krasovska_gets_love_without_llm() -> None:
     deps["classifier"].classify.assert_not_awaited()
 
 
-async def test_krasovska_respects_cooldown() -> None:
-    love_cooldown = Cooldown(60, clock=lambda: 0.0)
-    love_cooldown.mark(1)
-    message = _message("красовська")
-    await _handle(message, love_cooldown=love_cooldown)
-    message.reply.assert_not_awaited()
+async def test_krasovska_is_answered_every_time() -> None:
+    cooldown = Cooldown(60, clock=lambda: 0.0)
+    cooldown.mark(1)
+    for _ in range(3):
+        message = _message("красовська")
+        await _handle(message, cooldown=cooldown)
+        message.reply.assert_awaited_once()
 
 
 async def test_name_call_is_answered_even_in_cooldown() -> None:

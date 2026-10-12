@@ -48,16 +48,14 @@ async def on_group_text(
     responder: Responder | None,
     quotes: QuoteSource,
     cooldown: Cooldown,
-    love_cooldown: Cooldown,
     min_text_length: int,
 ) -> None:
     text = message.text or ""
 
-    # Красовська важливіша за все інше, і про неї LLM нічого не генерує
+    # Красовська важливіша за все інше, відповідь завжди, без cooldown.
+    # Про неї LLM нічого не генерує.
     if mentions_krasovska(text):
-        if love_cooldown.ready(message.chat.id):
-            await message.reply(love_phrase())
-            love_cooldown.mark(message.chat.id)
+        await message.reply(love_phrase())
         return
 
     # Пряме звертання без cooldown: людина сама покликала бота

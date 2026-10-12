@@ -28,7 +28,7 @@ Ruff: довжина рядка 100, правила `E F I B UP ASYNC`. pytest �
 
 Потік повідомлення в групі (`bot/handlers.py::on_group_text`), перша гілка, що спрацювала, завершує обробку:
 
-1. `mentions_krasovska` (`bot/triggers.py`): статична фраза з `LOVE_PHRASES` через окремий `love_cooldown`. LLM про неї не викликається навіть при звертанні до бота.
+1. `mentions_krasovska` (`bot/triggers.py`): статична фраза з `LOVE_PHRASES` на кожне повідомлення, без cooldown. LLM про неї не викликається навіть при звертанні до бота.
 2. `is_addressed` (ім'я бота за regex, `@username`, reply на бота): `Responder.answer` через Gemini, без cooldown. Без LLM або при збої відповідає `NO_ANSWER`.
 3. DevOps-гілка, кожен крок може обірвати обробку мовчки:
    - `should_classify`: дешевий фільтр без LLM (довжина ≥ `MIN_TEXT_LENGTH`, є літери);
