@@ -9,7 +9,7 @@ Telegram-бот у груповому чаті. Коли хтось пише п�
 ## Стек
 
 - Python 3.12+, aiogram 3 (long polling), pydantic-settings, PyYAML
-- LLM: Gemini Flash через `google-genai` (`gemini-2.5-flash`). Класифікатор теми і генерація цитат. Anthropic тут не використовується.
+- LLM: Gemini через `google-genai` (`gemini-3.5-flash-lite`). Тільки відповіді на звертання і, за бажанням, генерація цитат. DevOps-тема визначається ключовими словами, не LLM. Anthropic тут не використовується.
 - Docker (`python:3.12-slim`, non-root, read-only), docker compose на VPS
 - GitHub Actions: CI (ruff, mypy, pytest, образ у GHCR) і деплой по SSH
 
@@ -29,19 +29,19 @@ Ruff: довжина рядка 100, правила `E F I B UP ASYNC`. pytest �
 Потік повідомлення в групі (`bot/handlers.py::on_group_text`), перша гілка, що спрацювала, завершує обробку:
 
 1. `mentions_krasovska` (`bot/triggers.py`): статична фраза з `LOVE_PHRASES` на кожне повідомлення, без cooldown. LLM про неї не викликається навіть при звертанні до бота.
-2. `is_addressed` (ім'я бота за regex, `@username`, reply на бота): `Responder.answer` через Gemini, без cooldown. Без LLM або при збої відповідає `NO_ANSWER`.
-3. DevOps-гілка, кожен крок може обірвати обробку мовчки:
-   - `should_classify`: дешевий фільтр без LLM (довжина ≥ `MIN_TEXT_LENGTH`, є літери);
+2. `is_addressed` (ім'я бота за regex, `@username`, reply на бота): `Responder.answer` через Gemini, без cooldown. Без LLM або при збої (найчастіше 429) відповідає `quotes.static_quote()`, і лише при порожньому пулі `NO_ANSWER`.
+3. DevOps-гілка:
+   - `devops_topic` (`bot/triggers.py`): regex-и за основами слів, повертає тему або `None`. LLM тут не викликається, бо безкоштовний ліміт Gemini (~20 запитів на добу на модель) згорав на перевірці кожного повідомлення. Нові слова додавати в `_DEVOPS_TOPICS` разом з тестом у `tests/test_triggers.py`, включно з негативним прикладом, щоб не ловити звичайні слова («подруга», «продукти»);
    - `Cooldown.ready`: пауза на чат, `mark` лише після успішного reply. За замовчуванням `COOLDOWN_SECONDS=0`, тобто паузи немає;
-   - `classifier is None` → мовчимо (немає `GEMINI_API_KEY` або `LLM_ENABLED=false`);
-   - `Classifier.classify` → `Verdict(devops, topic)`, будь-яка помилка дає `NEGATIVE`;
-   - `QuoteSource.next_quote(topic)` залежно від `QUOTE_MODE`: `static`, `generate` або `mixed` (пул без повторів, далі генерація).
+   - `QuoteSource.next_quote(topic)` залежно від `QUOTE_MODE`: `static` (за замовчуванням, пул по колу без повторів у межах кола), `generate` або `mixed`. При збої LLM завжди повертає цитату з пулу.
 
 Залежності хендлерів передаються через aiogram DI: у `bot/main.py` вони кладуться в `dispatcher["<name>"]`, і хендлер отримує їх як kwargs з тим самим іменем. Новий параметр хендлера треба зареєструвати в `main.py`.
 
 Стан (cooldown, використані id цитат) тільки в пам'яті процесу, після рестарту скидається.
 
-Один `genai.Client` спільний для класифікатора, генерації цитат і `Responder`. Усі викликають `client.aio.models.generate_content` з `system_instruction` і `thinking_budget=0`: інакше thinking-токени 2.5 Flash з'їдають `max_output_tokens` і відповідь обрізається; у тестах мокається саме цей ланцюжок (див. фейки в `tests/test_classifier.py`).
+Один `genai.Client` спільний для генерації цитат і `Responder`. Обидва викликають `client.aio.models.generate_content` з `system_instruction`; у тестах мокається саме цей ланцюжок (див. фейки в `tests/test_responder.py`). Клієнт створюється з `HttpRetryOptions(attempts=1)`: інакше на 429 SDK ретраїть хвилинами, і бот довго не відповідає.
+
+Вибір моделі: `gemini-3.5-flash-lite` відповідає без thinking. `thinking_config` не передається, бо 3.x відхиляє `thinking_budget=0`, а `gemini-3.8-flash` не підтримує `thinking_level=minimal` і спалює ~400 токенів на роздуми. Старі `gemini-2.0-*` повертають 404. Безкоштовні ліміти видно тільки в AI Studio (aistudio.google.com/rate-limit), рахуються на проєкт і модель, денні скидаються опівночі за тихоокеанським часом.
 
 Healthcheck: `bot/main.py::heartbeat` кожні 30 с пише файл, а `HEALTHCHECK` у `Dockerfile` перевіряє, що він свіжий (< 120 с). Шлях `/tmp/mrdevops.heartbeat` захардкожений у Dockerfile, тому `HEARTBEAT_PATH` у compose має з ним збігатися. Контейнер `read_only`, писати можна лише в `/tmp` (tmpfs).
 
@@ -54,7 +54,7 @@ Healthcheck: `bot/main.py::heartbeat` кожні 30 с пише файл, а `HE
 
 ## Конвенції
 
-- Збої LLM трактуються як «не DevOps», бот мовчить. Не кидати винятки з `Classifier` і `QuoteSource`, повертати `NEGATIVE` / `None`.
+- Збої LLM не кидають винятків з `Responder` і `QuoteSource`: повертається `None`, а хендлер підставляє цитату з пулу.
 - Секрети тільки в `.env` (не комітиться) або в GitHub Secrets. Не вписувати токени в код і тести.
 - Тести не ходять у мережу, LLM завжди мокається.
 - Конфіг через змінні середовища: нові параметри додавати в `config/settings.py` і `.env.example`.
