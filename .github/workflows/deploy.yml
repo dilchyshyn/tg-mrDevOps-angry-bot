@@ -5,9 +5,16 @@ on:
     workflows: [CI]
     types: [completed]
     branches: [main]
+  # Ручний деплой або відкат на конкретний коміт з main
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "SHA коміту, образ якого деплоїти (порожньо = останній з main)"
+        required: false
 
 permissions:
   contents: read
+  packages: read
 
 concurrency:
   group: deploy-production
@@ -15,29 +22,76 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.event.workflow_run.conclusion == 'success'
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     environment: production
+    env:
+      SHA: ${{ inputs.sha || github.event.workflow_run.head_sha || github.sha }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+
+      - name: Образ для деплою
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}:${SHA}" >> "$GITHUB_ENV"
 
       - name: Прописати SSH-ключ
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+          # Краще задати VPS_KNOWN_HOSTS, інакше ключ хоста довіряється при першому з'єднанні
+          if [ -n "$VPS_KNOWN_HOSTS" ]; then
+            printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+          fi
+          printf 'Host vps\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_ed25519\n  BatchMode yes\n' \
+            "$VPS_HOST" "$VPS_USER" > ~/.ssh/config
 
       - name: Скопіювати compose-файл на сервер
         run: |
-          ssh -i ~/.ssh/id_ed25519 "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "mkdir -p ~/mrdevops"
-          scp -i ~/.ssh/id_ed25519 docker-compose.yml "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:~/mrdevops/docker-compose.yml"
+          ssh vps "mkdir -p ~/mrdevops"
+          scp docker-compose.yml vps:~/mrdevops/docker-compose.yml
+
+      # Якщо BOT_TOKEN є в GitHub Secrets, .env на сервері генерується з них.
+      # Якщо нема, лишається той .env, що вже лежить на сервері.
+      - name: Оновити .env на сервері
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          LLM_MODEL: ${{ vars.LLM_MODEL }}
+          LLM_ENABLED: ${{ vars.LLM_ENABLED }}
+          QUOTE_MODE: ${{ vars.QUOTE_MODE }}
+          COOLDOWN_SECONDS: ${{ vars.COOLDOWN_SECONDS }}
+          MIN_TEXT_LENGTH: ${{ vars.MIN_TEXT_LENGTH }}
+        run: |
+          if [ -z "$BOT_TOKEN" ]; then
+            echo "BOT_TOKEN не задано в секретах, використовується .env на сервері"
+            exit 0
+          fi
+          # Порожні значення не пишемо, щоб спрацювали дефолти з config/settings.py
+          for name in BOT_TOKEN GEMINI_API_KEY LLM_MODEL LLM_ENABLED QUOTE_MODE \
+                      COOLDOWN_SECONDS MIN_TEXT_LENGTH; do
+            if [ -n "${!name}" ]; then printf '%s=%s\n' "$name" "${!name}"; fi
+          done | ssh vps "umask 077 && cat > ~/mrdevops/.env"
+
+      - name: Логін сервера в GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$GHCR_TOKEN" | ssh vps "docker login ghcr.io -u '${{ github.actor }}' --password-stdin"
 
       - name: Оновити контейнер
-        run: |
-          ssh -i ~/.ssh/id_ed25519 "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
-            "cd ~/mrdevops && \
-             export MRDEVOPS_IMAGE=ghcr.io/${{ github.repository }}:latest && \
-             docker compose pull && \
-             docker compose up -d --remove-orphans && \
-             docker image prune -f"
+        run: ssh vps "bash -s -- '$IMAGE'" < scripts/deploy.sh
+
+      - name: Вийти з GHCR на сервері
+        if: always()
+        run: ssh vps "docker logout ghcr.io" || true
