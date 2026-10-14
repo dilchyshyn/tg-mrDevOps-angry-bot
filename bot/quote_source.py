@@ -1,6 +1,7 @@
 import logging
 import random
-from collections.abc import Sequence
+from collections import deque
+from collections.abc import Collection, Sequence
 from typing import Literal
 
 from google import genai
@@ -20,14 +21,25 @@ GENERATE_PROMPT = (
     "Відповідай ЛИШЕ текстом цитати, одним рядком, до 200 символів, без лапок і пояснень."
 )
 MAX_GENERATED_LENGTH = 200
+# Частка пулу, яка не повторюється навіть на стику кіл
+RECENT_SHARE = 3
 
 
-def pick_static(quotes: Sequence[Quote], used: set[str], rng: random.Random) -> Quote | None:
-    """Випадкова цитата, якої ще не було. None, якщо пул вичерпано."""
+def pick_static(
+    quotes: Sequence[Quote],
+    used: set[str],
+    rng: random.Random,
+    recent: Collection[str] = (),
+) -> Quote | None:
+    """Випадкова цитата, якої ще не було в колі. None, якщо пул вичерпано.
+
+    Нещодавно показані (`recent`) пропускаються, поки є з чого вибрати.
+    """
     available = [q for q in quotes if q.id not in used]
     if not available:
         return None
-    quote = rng.choice(available)
+    fresh = [q for q in available if q.id not in recent]
+    quote = rng.choice(fresh or available)
     used.add(quote.id)
     return quote
 
@@ -51,15 +63,23 @@ class QuoteSource:
         self._client = client
         self._model = model
         self._used: set[str] = set()
-        self._rng = rng or random.Random()
+        # Останні показані: на початку нового кола вони не йдуть одразу знову
+        self._recent: deque[str] = deque(maxlen=len(self._quotes) // RECENT_SHARE)
+        self._rng = rng or random.SystemRandom()
 
     def static_quote(self) -> str | None:
-        """Цитата з пулу без повторів у межах кола. None лише для порожнього пулу."""
-        quote = pick_static(self._quotes, self._used, self._rng)
+        """Цитата з пулу без повторів у межах кола і без повтору недавніх на стику кіл.
+
+        None лише для порожнього пулу.
+        """
+        quote = pick_static(self._quotes, self._used, self._rng, self._recent)
         if quote is None:
             self._used.clear()
-            quote = pick_static(self._quotes, self._used, self._rng)
-        return quote.text if quote is not None else None
+            quote = pick_static(self._quotes, self._used, self._rng, self._recent)
+        if quote is None:
+            return None
+        self._recent.append(quote.id)
+        return quote.text
 
     async def next_quote(self, topic: str) -> str | None:
         pool_exhausted = len(self._used) >= len(self._quotes)

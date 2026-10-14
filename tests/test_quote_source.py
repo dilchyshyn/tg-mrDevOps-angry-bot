@@ -31,6 +31,28 @@ async def test_static_mode_cycles_pool_without_repeats_in_round() -> None:
     assert sorted(q for q in second_round if q) == ["t0", "t1", "t2"]
 
 
+def test_pick_static_skips_recent_while_possible() -> None:
+    quotes = _quotes(3)
+    rng = random.Random(0)
+    for _ in range(20):
+        quote = pick_static(quotes, set(), rng, recent={"q0", "q1"})
+        assert quote is not None and quote.id == "q2"
+    # Усі доступні нещодавні: вибір усе одно є
+    assert pick_static(quotes, {"q2"}, rng, recent={"q0", "q1"}) is not None
+
+
+async def test_no_recent_repeat_across_rounds() -> None:
+    pool = 30
+    window = pool // 3
+    for seed in range(50):
+        source = QuoteSource(
+            _quotes(pool), mode="static", client=None, model="m", rng=random.Random(seed)
+        )
+        shown = [source.static_quote() for _ in range(pool * 4)]
+        for i in range(len(shown)):
+            assert shown[i] not in shown[max(0, i - window) : i], (seed, i)
+
+
 async def test_mixed_mode_without_client_falls_back_to_pool() -> None:
     source = QuoteSource(_quotes(1), mode="mixed", client=None, model="m", rng=random.Random(0))
     assert await source.next_quote("") == "t0"
