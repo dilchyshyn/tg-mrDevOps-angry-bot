@@ -1,4 +1,5 @@
 import logging
+import random
 import time
 from collections.abc import Sequence
 from typing import Literal
@@ -37,6 +38,12 @@ QUEEN_PROMPT = (
     "Якщо питання про DevOps чи техніку, дай корисну відповідь по суті. "
     "Відповідай ЛИШЕ текстом відповіді, без лапок і пояснень."
 )
+# Додається до грубого промпту з шансом DRUNK_CHANCE. Межі базового промпту діють і тут
+DRUNK_PROMPT = (
+    "Зараз ти п'яний у дрова. Язик заплітається: пишеш з помилками, розтягуєш літери "
+    "(«брааатан»), ікаєш (*ік*), губиш думку посеред речення, лізеш з п'яною дружбою "
+    "і признаєшся в любові до серверів. Але все одно пробуєш відповісти по суті."
+)
 MAX_ANSWER_LENGTH = 1000
 # Gemini чекає, що розмова починається з репліки користувача
 THREAD_START = "(початок розмови)"
@@ -52,9 +59,17 @@ _PROMPTS: dict[Tone, str] = {
 class Responder:
     """Відповідь на пряме звертання до бота."""
 
-    def __init__(self, client: genai.Client, model: str) -> None:
+    def __init__(
+        self,
+        client: genai.Client,
+        model: str,
+        drunk_chance: float = 0.0,
+        rng: random.Random | None = None,
+    ) -> None:
         self._client = client
         self._model = model
+        self._drunk_chance = drunk_chance
+        self._rng = rng or random.SystemRandom()
 
     async def answer(
         self,
@@ -67,13 +82,15 @@ class Responder:
 
         `examples`: цитати з пулу як зразок стилю для цитати в кінці відповіді.
         """
+        # П'яний лише в грубому тоні: захищеним і королеві п'яні грубощі не потрібні
+        drunk = tone == "rude" and self._rng.random() < self._drunk_chance
         started = time.monotonic()
         try:
             response = await self._client.aio.models.generate_content(
                 model=self._model,
                 contents=_contents(text, history),
                 config=types.GenerateContentConfig(
-                    system_instruction=_system_instruction(tone, examples),
+                    system_instruction=_system_instruction(tone, examples, drunk),
                     max_output_tokens=400,
                 ),
             )
@@ -83,8 +100,9 @@ class Responder:
         # Скільки чекали Gemini і на що пішли токени: роздуми теж сповільнюють відповідь
         usage = getattr(response, "usage_metadata", None)
         logger.info(
-            "Gemini: %.1f с, реплік в історії %d, токени: вхід %s, вихід %s, роздуми %s",
+            "Gemini: %.1f с%s, реплік в історії %d, токени: вхід %s, вихід %s, роздуми %s",
             time.monotonic() - started,
+            ", п'яний" if drunk else "",
             len(history),
             getattr(usage, "prompt_token_count", None),
             getattr(usage, "candidates_token_count", None),
@@ -104,8 +122,11 @@ def _contents(text: str, history: Sequence[Turn]) -> list[types.Content]:
     return [types.Content(role=role, parts=[types.Part(text=part)]) for role, part in turns]
 
 
-def _system_instruction(tone: Tone, examples: Sequence[str]) -> str:
+def _system_instruction(tone: Tone, examples: Sequence[str], drunk: bool = False) -> str:
+    prompt = _PROMPTS[tone]
+    if drunk:
+        prompt = f"{prompt} {DRUNK_PROMPT}"
     if not examples:
-        return _PROMPTS[tone]
+        return prompt
     lines = "\n".join(f"- {example}" for example in examples)
-    return f"{_PROMPTS[tone]}\n\nПриклади цитат у твоєму стилі:\n{lines}"
+    return f"{prompt}\n\nПриклади цитат у твоєму стилі:\n{lines}"

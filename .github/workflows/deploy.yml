@@ -70,6 +70,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           LLM_MODEL: ${{ vars.LLM_MODEL }}
           LLM_ENABLED: ${{ vars.LLM_ENABLED }}
+          DRUNK_CHANCE: ${{ vars.DRUNK_CHANCE }}
           QUOTE_MODE: ${{ vars.QUOTE_MODE }}
           COOLDOWN_SECONDS: ${{ vars.COOLDOWN_SECONDS }}
           PROTECTED_USERS: ${{ vars.PROTECTED_USERS }}
@@ -80,7 +81,7 @@ jobs:
             exit 0
           fi
           # Порожні значення не пишемо, щоб спрацювали дефолти з config/settings.py
-          for name in BOT_TOKEN GEMINI_API_KEY LLM_MODEL LLM_ENABLED QUOTE_MODE \
+          for name in BOT_TOKEN GEMINI_API_KEY LLM_MODEL LLM_ENABLED DRUNK_CHANCE QUOTE_MODE \
                       COOLDOWN_SECONDS PROTECTED_USERS QUEEN_USERS; do
             if [ -n "${!name}" ]; then printf '%s=%s\n' "$name" "${!name}"; fi
           done | ssh vps "umask 077 && cat > ~/mrdevops/.env"

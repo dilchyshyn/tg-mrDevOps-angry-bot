@@ -41,7 +41,7 @@ async def run() -> None:
 
     responder = None
     if llm_client is not None and settings.llm_enabled:
-        responder = Responder(llm_client, settings.llm_model)
+        responder = Responder(llm_client, settings.llm_model, settings.drunk_chance)
 
     dispatcher = Dispatcher()
     dispatcher.include_router(router)
