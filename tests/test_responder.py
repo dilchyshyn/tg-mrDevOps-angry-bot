@@ -78,3 +78,12 @@ async def test_history_starting_with_bot_gets_user_turn_first() -> None:
     await responder.answer("чого?", history=[Turn("model", "цитата", None)])
     roles = [c.role for c in client.aio.models.calls[0]["contents"]]
     assert roles == ["user", "model", "user"]
+
+
+async def test_examples_are_added_to_system_instruction() -> None:
+    client = _FakeClient("ok")
+    responder = Responder(client, "model")  # type: ignore[arg-type]
+    await responder.answer("питання", examples=["цитата раз", "цитата два"])
+    prompt = client.aio.models.calls[0]["config"].system_instruction
+    assert prompt.startswith(ANSWER_PROMPT)
+    assert "- цитата раз" in prompt and "- цитата два" in prompt

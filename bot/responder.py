@@ -14,7 +14,8 @@ ANSWER_PROMPT = (
     "Ти mrDevOps, грубий пацанський бот у груповому чаті. До тебе звернулись з питанням "
     "або реплікою. Відповідай коротко, до трьох речень, грубим уличним суржиком або "
     "українською з матами. Якщо питання про DevOps чи техніку, дай корисну відповідь "
-    "по суті, але в цьому стилі. "
+    "по суті, але в цьому стилі. Наприкінці додай одну свою коротку пацанську цитату "
+    "до теми, у стилі прикладів цитат, якщо їх дадуть, але не копіюй їх дослівно. "
     "Заборонено: жарти про жінок і їхню сексуальність, національності, релігії, "
     "сексуальну орієнтацію, будь-яких конкретних людей, реальних осіб та брендів. "
     "Відповідай ЛИШЕ текстом відповіді, без лапок і пояснень."
@@ -56,16 +57,23 @@ class Responder:
         self._model = model
 
     async def answer(
-        self, text: str, tone: Tone = "rude", history: Sequence[Turn] = ()
+        self,
+        text: str,
+        tone: Tone = "rude",
+        history: Sequence[Turn] = (),
+        examples: Sequence[str] = (),
     ) -> str | None:
-        """`history`: попередні репліки ланцюжка reply, щоб бот не суперечив сам собі."""
+        """`history`: попередні репліки ланцюжка reply, щоб бот не суперечив сам собі.
+
+        `examples`: цитати з пулу як зразок стилю для цитати в кінці відповіді.
+        """
         started = time.monotonic()
         try:
             response = await self._client.aio.models.generate_content(
                 model=self._model,
                 contents=_contents(text, history),
                 config=types.GenerateContentConfig(
-                    system_instruction=_PROMPTS[tone],
+                    system_instruction=_system_instruction(tone, examples),
                     max_output_tokens=400,
                 ),
             )
@@ -94,3 +102,10 @@ def _contents(text: str, history: Sequence[Turn]) -> list[types.Content]:
     if turns[0][0] == "model":
         turns.insert(0, ("user", THREAD_START))
     return [types.Content(role=role, parts=[types.Part(text=part)]) for role, part in turns]
+
+
+def _system_instruction(tone: Tone, examples: Sequence[str]) -> str:
+    if not examples:
+        return _PROMPTS[tone]
+    lines = "\n".join(f"- {example}" for example in examples)
+    return f"{_PROMPTS[tone]}\n\nПриклади цитат у твоєму стилі:\n{lines}"

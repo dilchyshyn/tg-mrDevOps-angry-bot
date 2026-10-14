@@ -1,9 +1,11 @@
 import random
 from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
 
 import pytest
 
-from bot.quote_source import QuoteSource, pick_static
+from bot.quote_source import TOPIC_TAGS, QuoteSource, pick_static
 from quotes.loader import Quote, load_quotes
 
 QUOTES_FILE = Path(__file__).resolve().parent.parent / "quotes" / "quotes.yaml"
@@ -117,3 +119,77 @@ def test_broken_state_is_ignored(tmp_path: Path) -> None:
     source = QuoteSource(_quotes(2), mode="static", client=None, model="m", state_path=state)
     assert source.static_quote() in {"t0", "t1"}
     assert '"used"' in state.read_text(encoding="utf-8")
+
+
+def _tagged() -> list[Quote]:
+    return [
+        Quote(id="d1", text="docker 1", lang="uk", tags=("docker",)),
+        Quote(id="d2", text="docker 2", lang="uk", tags=("docker",)),
+        Quote(id="k1", text="k8s 1", lang="uk", tags=("k8s",)),
+        Quote(id="g1", text="general 1", lang="uk", tags=("general",)),
+        Quote(id="g2", text="general 2", lang="uk", tags=("general",)),
+        Quote(id="g3", text="general 3", lang="uk", tags=("general",)),
+    ]
+
+
+def _source(mode: str = "static", client: Any = None, seed: int = 0) -> QuoteSource:
+    return QuoteSource(_tagged(), mode=mode, client=client, model="m", rng=random.Random(seed))  # type: ignore[arg-type]
+
+
+def test_static_quote_prefers_topic_tags() -> None:
+    for seed in range(20):
+        source = _source(seed=seed)
+        assert source.static_quote("docker") in {"docker 1", "docker 2"}
+        assert source.static_quote("kubernetes") == "k8s 1"
+
+
+def test_static_quote_falls_back_when_topic_exhausted() -> None:
+    source = _source()
+    shown = [source.static_quote("kubernetes") for _ in range(3)]
+    assert shown[0] == "k8s 1"
+    assert all(q is not None for q in shown)
+
+
+def test_examples_start_with_topic_and_keep_round() -> None:
+    source = _source()
+    examples = source.examples("docker", count=4)
+    assert len(examples) == 4 and len(set(examples)) == 4
+    assert {"docker 1", "docker 2"} <= set(examples)
+    # examples() не позначає цитати показаними: усе коло ще попереду
+    assert len({source.static_quote() for _ in range(6)}) == 6
+
+
+def test_bundled_tags_cover_all_topics() -> None:
+    tags = {tag for q in load_quotes(QUOTES_FILE) for tag in q.tags}
+    for topic, topic_tags in TOPIC_TAGS.items():
+        assert tags & topic_tags, topic
+
+
+class _FakeModels:
+    def __init__(self, result: str | Exception) -> None:
+        self._result = result
+        self.calls: list[dict[str, Any]] = []
+
+    async def generate_content(self, **kwargs: Any) -> Any:
+        self.calls.append(kwargs)
+        if isinstance(self._result, Exception):
+            raise self._result
+        return SimpleNamespace(text=self._result)
+
+
+def _client(result: str | Exception) -> Any:
+    return SimpleNamespace(aio=SimpleNamespace(models=_FakeModels(result)))
+
+
+async def test_generate_sends_message_and_pool_examples() -> None:
+    client = _client("«нова цитата»")
+    source = _source(mode="generate", client=client)
+    assert await source.next_quote("docker", "контейнер знову впав") == "нова цитата"
+    request = client.aio.models.calls[0]["contents"]
+    assert "Повідомлення: контейнер знову впав" in request
+    assert "- docker 1" in request or "- docker 2" in request
+
+
+async def test_generate_failure_gives_topic_quote_from_pool() -> None:
+    source = _source(mode="generate", client=_client(RuntimeError("429")))
+    assert await source.next_quote("kubernetes", "под у crashloop") == "k8s 1"

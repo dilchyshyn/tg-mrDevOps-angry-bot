@@ -85,9 +85,11 @@ async def on_group_text(
 
         answer = None
         if responder is not None:
+            # Зразки цитат лише для грубого тону: у пулі мати, захищеним їх не можна
+            examples = quotes.examples(devops_topic(text)) if tone == "rude" else []
             # «друкує…» у чаті, поки чекаємо Gemini: кілька секунд не виглядають як мовчання
             async with ChatActionSender.typing(bot=bot, chat_id=message.chat.id):
-                answer = await responder.answer(text, tone=tone, history=history)
+                answer = await responder.answer(text, tone=tone, history=history, examples=examples)
         if queen:
             reply_text = answer or queen_phrase()
         elif protected:
@@ -95,7 +97,7 @@ async def on_group_text(
             reply_text = answer or POLITE_NO_ANSWER
         else:
             # Ліміт Gemini або збій: бот не мовчить, а кидає цитату з пулу
-            reply_text = answer or quotes.static_quote() or NO_ANSWER
+            reply_text = answer or quotes.static_quote(devops_topic(text)) or NO_ANSWER
 
         sent = await message.reply(reply_text)
         parent_id = parent.message_id if parent is not None else None
@@ -119,7 +121,7 @@ async def on_group_text(
     if not cooldown.ready(message.chat.id):
         return
 
-    quote = await quotes.next_quote(topic)
+    quote = await quotes.next_quote(topic, text)
     if quote is None:
         return
 

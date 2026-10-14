@@ -46,7 +46,9 @@ def _bot() -> Any:
 
 def _quotes(static: str | None = "пул") -> Any:
     return SimpleNamespace(
-        next_quote=AsyncMock(return_value="цитата"), static_quote=Mock(return_value=static)
+        next_quote=AsyncMock(return_value="цитата"),
+        static_quote=Mock(return_value=static),
+        examples=Mock(return_value=["приклад"]),
     )
 
 
@@ -120,7 +122,7 @@ async def test_devops_keyword_gets_quote_with_topic() -> None:
     message = _message("у нас знову впав под")
     deps = await _handle(message)
     message.reply.assert_awaited_once_with("цитата")
-    deps["quotes"].next_quote.assert_awaited_once_with("kubernetes")
+    deps["quotes"].next_quote.assert_awaited_once_with("kubernetes", "у нас знову впав под")
 
 
 async def test_devops_respects_cooldown_when_set() -> None:
@@ -150,7 +152,7 @@ async def test_protected_user_by_id_gets_polite_answer() -> None:
     deps = await _handle(message)
     message.reply.assert_awaited_once_with("відповідь")
     deps["responder"].answer.assert_awaited_once_with(
-        "мрдевопс, що таке docker?", tone="polite", history=[]
+        "мрдевопс, що таке docker?", tone="polite", history=[], examples=[]
     )
 
 
@@ -165,7 +167,9 @@ async def test_protected_user_never_gets_pool_quote_on_llm_failure() -> None:
 async def test_regular_user_gets_rude_answer() -> None:
     message = _message("мрдевопс привіт")
     deps = await _handle(message)
-    deps["responder"].answer.assert_awaited_once_with("мрдевопс привіт", tone="rude", history=[])
+    deps["responder"].answer.assert_awaited_once_with(
+        "мрдевопс привіт", tone="rude", history=[], examples=["приклад"]
+    )
 
 
 async def test_protected_user_still_gets_krasovska_phrase() -> None:
@@ -179,7 +183,7 @@ async def test_queen_gets_royal_answer() -> None:
     deps = await _handle(message)
     message.reply.assert_awaited_once_with("відповідь")
     deps["responder"].answer.assert_awaited_once_with(
-        "мрдевопс, що таке kubernetes?", tone="queen", history=[]
+        "мрдевопс, що таке kubernetes?", tone="queen", history=[], examples=[]
     )
 
 
@@ -263,3 +267,16 @@ async def test_no_typing_without_llm() -> None:
     message = _message("мрдевопс привіт")
     deps = await _handle(message, responder=None)
     deps["bot"].send_chat_action.assert_not_awaited()
+
+
+async def test_rude_answer_gets_pool_examples_by_topic() -> None:
+    message = _message("мрдевопс, чого докер жере стільки памʼяті?")
+    deps = await _handle(message)
+    deps["quotes"].examples.assert_called_once_with("docker")
+
+
+async def test_llm_failure_pool_quote_matches_topic() -> None:
+    message = _message("мрдевопс, деплой впав")
+    responder = SimpleNamespace(answer=AsyncMock(return_value=None))
+    deps = await _handle(message, responder=responder)
+    deps["quotes"].static_quote.assert_called_once_with("деплой")
