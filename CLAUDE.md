@@ -15,7 +15,7 @@ Telegram-бот у груповому чаті. На DevOps-повідомлен
 
 ## Команди
 
-- `make install`: venv у `.venv` і `pip install -e ".[dev]"`
+- `make install`: venv у `.venv` і `pip install -e ".[dev]"`. Усі інструменти беруться з `.venv/bin/`, тож поза `make` викликати їх з цим префіксом (`.venv/bin/ruff`, `.venv/bin/mypy`, `.venv/bin/pytest`)
 - `make check`: `lint` + `typecheck` + `test`. Запускати перед комітом, CI робить те саме.
 - `make lint` (ruff check + format --check), `make format` (автовиправлення), `make typecheck` (`mypy bot config quotes`, strict)
 - Один тест: `.venv/bin/pytest tests/test_quote_source.py::test_bundled_quotes_file_is_valid`, або `-k <назва>`
@@ -73,7 +73,7 @@ Healthcheck: `bot/main.py::heartbeat` кожні 30 с пише файл, а `HE
 - Збої LLM не кидають винятків з `Responder` і `QuoteSource`: повертається `None`, а хендлер підставляє цитату з пулу.
 - Секрети тільки в `.env` (не комітиться) або в GitHub Secrets. Не вписувати токени в код і тести.
 - Тести не ходять у мережу, LLM завжди мокається.
-- Конфіг через змінні середовища: нові параметри додавати в `config/settings.py` і `.env.example`.
+- Конфіг через змінні середовища: нові параметри додавати в `config/settings.py` і `.env.example`. Виняток — внутрішні `QUOTES_PATH` і `HEARTBEAT_PATH`: вони мають дефолти в `settings.py` і в `.env.example` свідомо відсутні.
 
 ## Цитати
 
