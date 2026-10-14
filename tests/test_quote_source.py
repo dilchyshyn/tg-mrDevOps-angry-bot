@@ -91,3 +91,29 @@ def test_loader_rejects_unknown_lang(tmp_path: Path) -> None:
     path.write_text('quotes:\n  - {id: a, text: "x", lang: en}\n', encoding="utf-8")
     with pytest.raises(ValueError, match="Невідома мова"):
         load_quotes(path)
+
+
+def test_state_survives_restart(tmp_path: Path) -> None:
+    state = tmp_path / "state.json"
+    quotes = _quotes(10)
+    first = QuoteSource(quotes, mode="static", client=None, model="m", state_path=state)
+    shown = {first.static_quote() for _ in range(6)}
+
+    second = QuoteSource(quotes, mode="static", client=None, model="m", state_path=state)
+    rest = {second.static_quote() for _ in range(4)}
+    assert shown | rest == {f"t{i}" for i in range(10)}
+
+
+def test_state_drops_removed_quotes(tmp_path: Path) -> None:
+    state = tmp_path / "state.json"
+    state.write_text('{"used": ["q0", "gone"], "recent": ["gone", "q0"]}', encoding="utf-8")
+    source = QuoteSource(_quotes(2), mode="static", client=None, model="m", state_path=state)
+    assert source.static_quote() == "t1"
+
+
+def test_broken_state_is_ignored(tmp_path: Path) -> None:
+    state = tmp_path / "state.json"
+    state.write_text("не json", encoding="utf-8")
+    source = QuoteSource(_quotes(2), mode="static", client=None, model="m", state_path=state)
+    assert source.static_quote() in {"t0", "t1"}
+    assert '"used"' in state.read_text(encoding="utf-8")

@@ -14,8 +14,10 @@ COPY config ./config
 COPY quotes ./quotes
 RUN pip install .
 
+# /data: точка монтування volume зі станом. Новий named volume переймає власника з образу
 RUN useradd --create-home --uid 10001 mrdevops \
-    && chown -R mrdevops /app
+    && mkdir /data \
+    && chown -R mrdevops /app /data
 USER mrdevops
 
 HEALTHCHECK --interval=60s --timeout=5s --start-period=30s --retries=3 \

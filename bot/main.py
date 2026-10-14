@@ -51,6 +51,7 @@ async def run() -> None:
         mode=settings.quote_mode,
         client=llm_client if settings.llm_enabled else None,
         model=settings.llm_model,
+        state_path=Path(settings.state_path) if settings.state_path else None,
     )
     dispatcher["cooldown"] = Cooldown(settings.cooldown_seconds)
     dispatcher["dialogs"] = Dialogs()

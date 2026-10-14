@@ -28,5 +28,8 @@ class Settings(BaseSettings):
     protected_users: str = ""
     # До цих людей бот звертається як до королеви. Вони автоматично захищені
     queen_users: str = ""
+    # Файл стану пулу цитат (показані в колі й останні). Порожньо = лише в пам'яті.
+    # У Docker лежить на volume /data, щоб переживати рестарти і деплої
+    state_path: str | None = None
     # Шлях до heartbeat-файлу для Docker healthcheck
     heartbeat_path: str = "/tmp/mrdevops.heartbeat"

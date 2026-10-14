@@ -1,7 +1,10 @@
+import json
 import logging
+import os
 import random
 from collections import deque
 from collections.abc import Collection, Sequence
+from pathlib import Path
 from typing import Literal
 
 from google import genai
@@ -57,6 +60,7 @@ class QuoteSource:
         client: genai.Client | None,
         model: str,
         rng: random.Random | None = None,
+        state_path: Path | None = None,
     ) -> None:
         self._quotes = list(quotes)
         self._mode = mode
@@ -66,6 +70,9 @@ class QuoteSource:
         # Останні показані: на початку нового кола вони не йдуть одразу знову
         self._recent: deque[str] = deque(maxlen=len(self._quotes) // RECENT_SHARE)
         self._rng = rng or random.SystemRandom()
+        # Файл стану на docker volume, щоб коло не скидалось після рестарту і деплою
+        self._state_path = state_path
+        self._load_state()
 
     def static_quote(self) -> str | None:
         """Цитата з пулу без повторів у межах кола і без повтору недавніх на стику кіл.
@@ -79,7 +86,34 @@ class QuoteSource:
         if quote is None:
             return None
         self._recent.append(quote.id)
+        self._save_state()
         return quote.text
+
+    def _load_state(self) -> None:
+        if self._state_path is None or not self._state_path.exists():
+            return
+        try:
+            state = json.loads(self._state_path.read_text(encoding="utf-8"))
+            used, recent = state["used"], state["recent"]
+        except Exception:
+            logger.exception("Не вдалось прочитати стан цитат, починаю з нуля")
+            return
+        # Пул міг змінитись між деплоями: id, яких уже немає, відкидаються
+        known = {q.id for q in self._quotes}
+        self._used = {i for i in used if i in known}
+        self._recent.extend(i for i in recent if i in known)
+        logger.info("Стан цитат відновлено: показано %d з %d", len(self._used), len(known))
+
+    def _save_state(self) -> None:
+        if self._state_path is None:
+            return
+        state = {"used": sorted(self._used), "recent": list(self._recent)}
+        tmp = self._state_path.with_suffix(".tmp")
+        try:
+            tmp.write_text(json.dumps(state), encoding="utf-8")
+            os.replace(tmp, self._state_path)
+        except OSError:
+            logger.exception("Не вдалось зберегти стан цитат")
 
     async def next_quote(self, topic: str) -> str | None:
         pool_exhausted = len(self._used) >= len(self._quotes)

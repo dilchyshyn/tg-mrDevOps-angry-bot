@@ -46,7 +46,7 @@ Ruff: довжина рядка 100, правила `E F I B UP ASYNC`. pytest �
 
 Залежності хендлерів передаються через aiogram DI: у `bot/main.py` вони кладуться в `dispatcher["<name>"]`, і хендлер отримує їх як kwargs з тим самим іменем. Новий параметр хендлера треба зареєструвати в `main.py`.
 
-Стан (cooldown, використані id цитат, ланцюжки діалогів) тільки в пам'яті процесу, після рестарту скидається.
+Стан (cooldown, ланцюжки діалогів) тільки в пам'яті процесу, після рестарту скидається. Виняток — стан пулу цитат (показані в колі й останні): якщо задано `STATE_PATH`, `QuoteSource` після кожного вибору атомарно пише JSON і читає його на старті, відкидаючи id, яких уже немає в пулі. У compose це `/data/quotes-state.json` на named volume `mrdevops-data`, який переживає рестарти і деплої; локально без `STATE_PATH` усе в пам'яті.
 
 Поза групою бот реагує лише на `/start` в особистих повідомленнях (`on_start`), решту ігнорує.
 
@@ -56,7 +56,7 @@ Ruff: довжина рядка 100, правила `E F I B UP ASYNC`. pytest �
 
 Вибір моделі: `gemini-3.5-flash-lite` відповідає без thinking. `thinking_config` не передається, бо 3.x відхиляє `thinking_budget=0`, а `gemini-3.8-flash` не підтримує `thinking_level=minimal` і спалює ~400 токенів на роздуми. Старі `gemini-2.0-*` повертають 404. Безкоштовні ліміти видно тільки в AI Studio (aistudio.google.com/rate-limit), рахуються на проєкт і модель, денні скидаються опівночі за тихоокеанським часом.
 
-Healthcheck: `bot/main.py::heartbeat` кожні 30 с пише файл, а `HEALTHCHECK` у `Dockerfile` перевіряє, що він свіжий (< 120 с). Шлях `/tmp/mrdevops.heartbeat` захардкожений у Dockerfile, тому `HEARTBEAT_PATH` у compose має з ним збігатися. Контейнер `read_only`, писати можна лише в `/tmp` (tmpfs).
+Healthcheck: `bot/main.py::heartbeat` кожні 30 с пише файл, а `HEALTHCHECK` у `Dockerfile` перевіряє, що він свіжий (< 120 с). Шлях `/tmp/mrdevops.heartbeat` захардкожений у Dockerfile, тому `HEARTBEAT_PATH` у compose має з ним збігатися. Контейнер `read_only`, писати можна лише в `/tmp` (tmpfs, очищається при перезапуску) і в `/data` (volume). `/data` створюється в `Dockerfile` з власником `mrdevops`: новий named volume переймає цього власника з образу.
 
 ## Деплой
 
@@ -73,7 +73,7 @@ Healthcheck: `bot/main.py::heartbeat` кожні 30 с пише файл, а `HE
 - Збої LLM не кидають винятків з `Responder` і `QuoteSource`: повертається `None`, а хендлер підставляє цитату з пулу.
 - Секрети тільки в `.env` (не комітиться) або в GitHub Secrets. Не вписувати токени в код і тести.
 - Тести не ходять у мережу, LLM завжди мокається.
-- Конфіг через змінні середовища: нові параметри додавати в `config/settings.py` і `.env.example`. Виняток — внутрішні `QUOTES_PATH` і `HEARTBEAT_PATH`: вони мають дефолти в `settings.py` і в `.env.example` свідомо відсутні.
+- Конфіг через змінні середовища: нові параметри додавати в `config/settings.py` і `.env.example`. Виняток — внутрішні `QUOTES_PATH`, `HEARTBEAT_PATH` і `STATE_PATH` (задається в compose): вони мають дефолти в `settings.py` і в `.env.example` свідомо відсутні.
 
 ## Цитати
 

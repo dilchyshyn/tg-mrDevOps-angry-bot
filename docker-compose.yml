@@ -6,9 +6,12 @@ services:
     env_file: .env
     environment:
       HEARTBEAT_PATH: /tmp/mrdevops.heartbeat
+      STATE_PATH: /data/quotes-state.json
     read_only: true
     tmpfs:
       - /tmp
+    volumes:
+      - mrdevops-data:/data
     security_opt:
       - no-new-privileges:true
     logging:
@@ -16,3 +19,6 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+volumes:
+  mrdevops-data:
