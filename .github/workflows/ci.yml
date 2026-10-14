@@ -58,7 +58,7 @@ jobs:
       - uses: docker/setup-buildx-action@v3
 
       - name: Зібрати образ
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: ${{ matrix.platform }}
@@ -85,7 +85,7 @@ jobs:
       - name: Опублікувати образ
         id: push
         if: env.PUBLISH == 'true'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: ${{ matrix.platform }}
