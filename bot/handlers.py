@@ -1,6 +1,7 @@
 from aiogram import Bot, F, Router
 from aiogram.filters import CommandStart
 from aiogram.types import Message
+from aiogram.utils.chat_action import ChatActionSender
 
 from bot.cooldown import Cooldown
 from bot.dialogs import Dialogs, Turn
@@ -82,7 +83,11 @@ async def on_group_text(
                 # Ланцюжка немає (рестарт, DevOps-цитата): хоча б те, на що відповіли
                 history = [Turn("model", parent.text, None)]
 
-        answer = await responder.answer(text, tone=tone, history=history) if responder else None
+        answer = None
+        if responder is not None:
+            # «друкує…» у чаті, поки чекаємо Gemini: кілька секунд не виглядають як мовчання
+            async with ChatActionSender.typing(bot=bot, chat_id=message.chat.id):
+                answer = await responder.answer(text, tone=tone, history=history)
         if queen:
             reply_text = answer or queen_phrase()
         elif protected:

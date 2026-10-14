@@ -1,4 +1,5 @@
 import logging
+import time
 from collections.abc import Sequence
 from typing import Literal
 
@@ -58,6 +59,7 @@ class Responder:
         self, text: str, tone: Tone = "rude", history: Sequence[Turn] = ()
     ) -> str | None:
         """`history`: попередні репліки ланцюжка reply, щоб бот не суперечив сам собі."""
+        started = time.monotonic()
         try:
             response = await self._client.aio.models.generate_content(
                 model=self._model,
@@ -70,6 +72,16 @@ class Responder:
         except Exception:
             logger.exception("Помилка відповіді на звертання")
             return None
+        # Скільки чекали Gemini і на що пішли токени: роздуми теж сповільнюють відповідь
+        usage = getattr(response, "usage_metadata", None)
+        logger.info(
+            "Gemini: %.1f с, реплік в історії %d, токени: вхід %s, вихід %s, роздуми %s",
+            time.monotonic() - started,
+            len(history),
+            getattr(usage, "prompt_token_count", None),
+            getattr(usage, "candidates_token_count", None),
+            getattr(usage, "thoughts_token_count", None),
+        )
         answer = (response.text or "").strip()
         if not answer:
             return None

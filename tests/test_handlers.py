@@ -1,3 +1,4 @@
+import asyncio
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, Mock
@@ -37,7 +38,9 @@ def _message(
 
 def _bot() -> Any:
     return SimpleNamespace(
-        id=BOT_ID, me=AsyncMock(return_value=SimpleNamespace(username="TestBot"))
+        id=BOT_ID,
+        me=AsyncMock(return_value=SimpleNamespace(username="TestBot")),
+        send_chat_action=AsyncMock(),
     )
 
 
@@ -243,3 +246,20 @@ async def test_fallback_answer_is_remembered_in_thread() -> None:
     responder = SimpleNamespace(answer=AsyncMock(return_value=None))
     await _handle(_message("мрдевопс привіт", message_id=10), responder=responder, dialogs=dialogs)
     assert [turn.text for turn in dialogs.thread(1, 11)] == ["мрдевопс привіт", "пул"]
+
+
+async def test_typing_is_shown_while_waiting_for_llm() -> None:
+    async def slow_answer(*_: Any, **__: Any) -> str:
+        await asyncio.sleep(0.05)
+        return "відповідь"
+
+    message = _message("мрдевопс привіт")
+    deps = await _handle(message, responder=SimpleNamespace(answer=slow_answer))
+    deps["bot"].send_chat_action.assert_awaited()
+    assert deps["bot"].send_chat_action.await_args.kwargs["action"] == "typing"
+
+
+async def test_no_typing_without_llm() -> None:
+    message = _message("мрдевопс привіт")
+    deps = await _handle(message, responder=None)
+    deps["bot"].send_chat_action.assert_not_awaited()
