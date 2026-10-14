@@ -47,11 +47,23 @@ wait_healthy() {
   return 1
 }
 
+# Старі образи цього бота: лишаються лише поточний і попередній (для відкату).
+# Чужі образи на сервері не чіпаються, бо фільтр за репозиторієм
+cleanup_old_images() {
+  local repo="${IMAGE%:*}" image
+  docker images --format '{{.Repository}}:{{.Tag}}' "$repo" | while read -r image; do
+    if [ "$image" != "$IMAGE" ] && [ "$image" != "$previous" ]; then
+      docker image rm "$image" >/dev/null && echo "Видалено старий образ $image" || true
+    fi
+  done
+}
+
 docker pull "$IMAGE"
 deploy "$IMAGE"
 
 if wait_healthy; then
   echo "Деплой успішний"
+  cleanup_old_images || echo "Не вдалось прибрати старі образи"
   docker image prune -f
   exit 0
 fi
