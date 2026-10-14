@@ -52,7 +52,7 @@ Ruff: довжина рядка 100, правила `E F I B UP ASYNC`. pytest �
 
 Без `GEMINI_API_KEY` клієнт не створюється, а `LLM_ENABLED=false` вимикає і `Responder` (у DI тоді лежить `None`), і генерацію цитат (`QuoteSource` отримує `client=None` і бере все з пулу).
 
-Один `genai.Client` спільний для генерації цитат і `Responder`. Обидва викликають `client.aio.models.generate_content` з `system_instruction`; у тестах мокається саме цей ланцюжок (див. фейки в `tests/test_responder.py`). Клієнт створюється з `HttpRetryOptions(attempts=1)`: інакше на 429 SDK ретраїть хвилинами, і бот довго не відповідає.
+Один `genai.Client` спільний для генерації цитат і `Responder`. Обидва ходять у Gemini лише через `bot/llm.py::generate`: він ловить збої (повертає `None`), логує час і токени (вхід, вихід, роздуми) з міткою виклику. Там же `FORBIDDEN_TOPICS` (спільні межі грубих промптів) і `format_examples`. У тестах мокається ланцюжок `client.aio.models.generate_content` через `tests/fakes.py::FakeGeminiClient`. Клієнт створюється з `HttpRetryOptions(attempts=1)`: інакше на 429 SDK ретраїть хвилинами, і бот довго не відповідає.
 
 Вибір моделі: `gemini-3.5-flash-lite` відповідає без thinking. `thinking_config` не передається, бо 3.x відхиляє `thinking_budget=0`, а `gemini-3.8-flash` не підтримує `thinking_level=minimal` і спалює ~400 токенів на роздуми. Старі `gemini-2.0-*` повертають 404. Ліміт (~20 запитів на добу на модель) спільний для генерації цитат і відповідей: у режимі `generate` він згорає за ~20 DevOps-повідомлень, далі до опівночі за тихоокеанським часом усе йде з пулу. Безкоштовні ліміти видно тільки в AI Studio (aistudio.google.com/rate-limit), рахуються на проєкт і модель, денні скидаються опівночі за тихоокеанським часом.
 

@@ -65,6 +65,8 @@ async def on_group_text(
     queen = queen_users.contains(message.from_user)
     protected = queen or protected_users.contains(message.from_user)
     tone: Tone = "queen" if queen else "polite" if protected else "rude"
+    # DevOps визначається ключовими словами, без LLM і без лімітів
+    topic = devops_topic(text)
 
     # Красовська важливіша за все інше, відповідь завжди, без cooldown.
     # Про неї LLM нічого не генерує.
@@ -86,7 +88,7 @@ async def on_group_text(
         answer = None
         if responder is not None:
             # Зразки цитат лише для грубого тону: у пулі мати, захищеним їх не можна
-            examples = quotes.examples(devops_topic(text)) if tone == "rude" else []
+            examples = quotes.examples(topic) if tone == "rude" else []
             # «друкує…» у чаті, поки чекаємо Gemini: кілька секунд не виглядають як мовчання
             async with ChatActionSender.typing(bot=bot, chat_id=message.chat.id):
                 answer = await responder.answer(text, tone=tone, history=history, examples=examples)
@@ -97,7 +99,7 @@ async def on_group_text(
             reply_text = answer or POLITE_NO_ANSWER
         else:
             # Ліміт Gemini або збій: бот не мовчить, а кидає цитату з пулу
-            reply_text = answer or quotes.static_quote(devops_topic(text)) or NO_ANSWER
+            reply_text = answer or quotes.static_quote(topic) or NO_ANSWER
 
         sent = await message.reply(reply_text)
         parent_id = parent.message_id if parent is not None else None
@@ -107,15 +109,13 @@ async def on_group_text(
 
     # Королеві на DevOps замість грубої цитати комплімент, звичайні повідомлення без реакції
     if queen:
-        if devops_topic(text) is not None:
+        if topic is not None:
             await message.reply(queen_phrase())
         return
 
     if protected:
         return
 
-    # DevOps визначається ключовими словами, без LLM і без лімітів
-    topic = devops_topic(text)
     if topic is None:
         return
     if not cooldown.ready(message.chat.id):

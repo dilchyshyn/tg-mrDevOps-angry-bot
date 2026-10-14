@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Literal
 
 from google import genai
-from google.genai import types
 
+from bot.llm import FORBIDDEN_TOPICS, format_examples, generate
 from quotes.loader import Quote
 
 logger = logging.getLogger(__name__)
@@ -21,9 +21,8 @@ GENERATE_PROMPT = (
     "Цитата має бути влучною саме до цього повідомлення і його теми, а не загальною. "
     "Стиль бери з прикладів цитат, які дадуть разом з повідомленням, але не копіюй їх. "
     "Стиль: грубий уличний суржик або українська з матами, як у реальних пацанів. "
-    "Заборонено: жарти про жінок і їхню сексуальність, національності, релігії, "
-    "сексуальну орієнтацію, будь-яких конкретних людей, реальних осіб та брендів. "
-    "Відповідай ЛИШЕ текстом цитати, одним рядком, до 200 символів, без лапок і пояснень."
+    + FORBIDDEN_TOPICS
+    + "Відповідай ЛИШЕ текстом цитати, одним рядком, до 200 символів, без лапок і пояснень."
 )
 MAX_GENERATED_LENGTH = 200
 MAX_MESSAGE_LENGTH = 500
@@ -45,6 +44,10 @@ TOPIC_TAGS: dict[str, frozenset[str]] = {
 RECENT_SHARE = 3
 
 
+def _on_topic(quote: Quote, tags: Collection[str]) -> bool:
+    return not set(quote.tags).isdisjoint(tags)
+
+
 def pick_static(
     quotes: Sequence[Quote],
     used: set[str],
@@ -61,7 +64,7 @@ def pick_static(
     if not available:
         return None
     fresh = [q for q in available if q.id not in recent] or available
-    on_topic = [q for q in fresh if not set(q.tags).isdisjoint(tags)]
+    on_topic = [q for q in fresh if _on_topic(q, tags)]
     quote = rng.choice(on_topic or fresh)
     used.add(quote.id)
     return quote
@@ -115,8 +118,8 @@ class QuoteSource:
     def examples(self, topic: str | None = None, count: int = EXAMPLES_COUNT) -> list[str]:
         """Кілька цитат з пулу як зразок стилю для LLM, спершу за темою. Коло не чіпає."""
         tags = TOPIC_TAGS.get(topic or "", frozenset())
-        on_topic = [q for q in self._quotes if not set(q.tags).isdisjoint(tags)]
-        others = [q for q in self._quotes if set(q.tags).isdisjoint(tags)]
+        on_topic = [q for q in self._quotes if _on_topic(q, tags)]
+        others = [q for q in self._quotes if not _on_topic(q, tags)]
         picked = self._rng.sample(on_topic, min(count // 2 + 1, len(on_topic)))
         picked += self._rng.sample(others, min(count - len(picked), len(others)))
         return [q.text for q in picked]
@@ -160,28 +163,23 @@ class QuoteSource:
         if self._client is None:
             logger.warning("Генерація цитат вимкнена: немає GEMINI_API_KEY")
             return None
-        try:
-            response = await self._client.aio.models.generate_content(
-                model=self._model,
-                contents=_generate_request(topic, text, self.examples(topic)),
-                config=types.GenerateContentConfig(
-                    system_instruction=GENERATE_PROMPT,
-                    max_output_tokens=120,
-                ),
-            )
-        except Exception:
-            logger.exception("Помилка генерації цитати")
+        quote = await generate(
+            self._client,
+            self._model,
+            _generate_request(topic, text, self.examples(topic)),
+            GENERATE_PROMPT,
+            max_output_tokens=120,
+            label=f"цитата, тема {topic or 'девопс'}",
+        )
+        quote = (quote or "").strip('"«»').strip()
+        if not quote or len(quote) > MAX_GENERATED_LENGTH:
             return None
-        text = (response.text or "").strip().strip('"«»').strip()
-        if not text or len(text) > MAX_GENERATED_LENGTH:
-            return None
-        return text
+        return quote
 
 
 def _generate_request(topic: str, text: str, examples: Sequence[str]) -> str:
     lines = [f"Тема: {topic or 'девопс'}"]
     if text:
         lines.append(f"Повідомлення: {text[:MAX_MESSAGE_LENGTH]}")
-    lines.append("Приклади цитат у потрібному стилі:")
-    lines += [f"- {example}" for example in examples]
+    lines += ["Приклади цитат у потрібному стилі:", format_examples(examples)]
     return "\n".join(lines)

@@ -1,12 +1,12 @@
 import random
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any
 
 import pytest
 
 from bot.quote_source import TOPIC_TAGS, QuoteSource, pick_static
 from quotes.loader import Quote, load_quotes
+from tests.fakes import FakeGeminiClient
 
 QUOTES_FILE = Path(__file__).resolve().parent.parent / "quotes" / "quotes.yaml"
 
@@ -165,31 +165,15 @@ def test_bundled_tags_cover_all_topics() -> None:
         assert tags & topic_tags, topic
 
 
-class _FakeModels:
-    def __init__(self, result: str | Exception) -> None:
-        self._result = result
-        self.calls: list[dict[str, Any]] = []
-
-    async def generate_content(self, **kwargs: Any) -> Any:
-        self.calls.append(kwargs)
-        if isinstance(self._result, Exception):
-            raise self._result
-        return SimpleNamespace(text=self._result)
-
-
-def _client(result: str | Exception) -> Any:
-    return SimpleNamespace(aio=SimpleNamespace(models=_FakeModels(result)))
-
-
 async def test_generate_sends_message_and_pool_examples() -> None:
-    client = _client("«нова цитата»")
+    client = FakeGeminiClient("«нова цитата»")
     source = _source(mode="generate", client=client)
     assert await source.next_quote("docker", "контейнер знову впав") == "нова цитата"
-    request = client.aio.models.calls[0]["contents"]
+    request = client.calls[0]["contents"]
     assert "Повідомлення: контейнер знову впав" in request
     assert "- docker 1" in request or "- docker 2" in request
 
 
 async def test_generate_failure_gives_topic_quote_from_pool() -> None:
-    source = _source(mode="generate", client=_client(RuntimeError("429")))
+    source = _source(mode="generate", client=FakeGeminiClient(RuntimeError("429")))
     assert await source.next_quote("kubernetes", "под у crashloop") == "k8s 1"

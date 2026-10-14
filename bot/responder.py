@@ -1,6 +1,4 @@
-import logging
 import random
-import time
 from collections.abc import Sequence
 from typing import Literal
 
@@ -8,26 +6,24 @@ from google import genai
 from google.genai import types
 
 from bot.dialogs import Turn
+from bot.llm import FORBIDDEN_TOPICS, format_examples, generate
 
-logger = logging.getLogger(__name__)
-
+ONLY_TEXT = "Відповідай ЛИШЕ текстом відповіді, без лапок і пояснень."
 ANSWER_PROMPT = (
     "Ти mrDevOps, грубий пацанський бот у груповому чаті. До тебе звернулись з питанням "
     "або реплікою. Відповідай коротко, до трьох речень, грубим уличним суржиком або "
     "українською з матами. Якщо питання про DevOps чи техніку, дай корисну відповідь "
     "по суті, але в цьому стилі. Наприкінці додай одну свою коротку пацанську цитату "
     "до теми, у стилі прикладів цитат, якщо їх дадуть, але не копіюй їх дослівно. "
-    "Заборонено: жарти про жінок і їхню сексуальність, національності, релігії, "
-    "сексуальну орієнтацію, будь-яких конкретних людей, реальних осіб та брендів. "
-    "Відповідай ЛИШЕ текстом відповіді, без лапок і пояснень."
+    + FORBIDDEN_TOPICS
+    + ONLY_TEXT
 )
 # Для захищених користувачів (PROTECTED_USERS): та сама суть, але без грубощів
 POLITE_PROMPT = (
     "Ти mrDevOps, бот у груповому чаті. До тебе звернулась людина, з якою ти завжди "
     "ввічливий і доброзичливий. Відповідай коротко, до трьох речень, українською, "
     "тепло і по суті. Без матів, образ, підколок і сарказму. Якщо питання про DevOps "
-    "чи техніку, дай корисну відповідь. "
-    "Відповідай ЛИШЕ текстом відповіді, без лапок і пояснень."
+    "чи техніку, дай корисну відповідь. " + ONLY_TEXT
 )
 # Для QUEEN_USERS: звертання як до королеви
 QUEEN_PROMPT = (
@@ -35,8 +31,7 @@ QUEEN_PROMPT = (
     "і найкраща жінка у світі. Звертайся до неї як до королеви («Ваша Величносте», "
     "«моя королево»), з захопленням, повагою і теплом. Відповідай коротко, до трьох "
     "речень, українською. Без матів, грубощів і будь-якого сексуального підтексту. "
-    "Якщо питання про DevOps чи техніку, дай корисну відповідь по суті. "
-    "Відповідай ЛИШЕ текстом відповіді, без лапок і пояснень."
+    "Якщо питання про DevOps чи техніку, дай корисну відповідь по суті. " + ONLY_TEXT
 )
 # Додається до грубого промпту з шансом DRUNK_CHANCE. Межі базового промпту діють і тут
 DRUNK_PROMPT = (
@@ -84,34 +79,16 @@ class Responder:
         """
         # П'яний лише в грубому тоні: захищеним і королеві п'яні грубощі не потрібні
         drunk = tone == "rude" and self._rng.random() < self._drunk_chance
-        started = time.monotonic()
-        try:
-            response = await self._client.aio.models.generate_content(
-                model=self._model,
-                contents=_contents(text, history),
-                config=types.GenerateContentConfig(
-                    system_instruction=_system_instruction(tone, examples, drunk),
-                    max_output_tokens=400,
-                ),
-            )
-        except Exception:
-            logger.exception("Помилка відповіді на звертання")
-            return None
-        # Скільки чекали Gemini і на що пішли токени: роздуми теж сповільнюють відповідь
-        usage = getattr(response, "usage_metadata", None)
-        logger.info(
-            "Gemini: %.1f с%s, реплік в історії %d, токени: вхід %s, вихід %s, роздуми %s",
-            time.monotonic() - started,
-            ", п'яний" if drunk else "",
-            len(history),
-            getattr(usage, "prompt_token_count", None),
-            getattr(usage, "candidates_token_count", None),
-            getattr(usage, "thoughts_token_count", None),
+        label = "відповідь, п'яний" if drunk else "відповідь"
+        answer = await generate(
+            self._client,
+            self._model,
+            _contents(text, history),
+            _system_instruction(tone, examples, drunk),
+            max_output_tokens=400,
+            label=f"{label}, реплік в історії {len(history)}",
         )
-        answer = (response.text or "").strip()
-        if not answer:
-            return None
-        return answer[:MAX_ANSWER_LENGTH]
+        return answer[:MAX_ANSWER_LENGTH] if answer else None
 
 
 def _contents(text: str, history: Sequence[Turn]) -> list[types.Content]:
@@ -128,5 +105,4 @@ def _system_instruction(tone: Tone, examples: Sequence[str], drunk: bool = False
         prompt = f"{prompt} {DRUNK_PROMPT}"
     if not examples:
         return prompt
-    lines = "\n".join(f"- {example}" for example in examples)
-    return f"{prompt}\n\nПриклади цитат у твоєму стилі:\n{lines}"
+    return f"{prompt}\n\nПриклади цитат у твоєму стилі:\n{format_examples(examples)}"
