@@ -1,8 +1,11 @@
 import logging
+from collections.abc import Sequence
 from typing import Literal
 
 from google import genai
 from google.genai import types
+
+from bot.dialogs import Turn
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +36,8 @@ QUEEN_PROMPT = (
     "Відповідай ЛИШЕ текстом відповіді, без лапок і пояснень."
 )
 MAX_ANSWER_LENGTH = 1000
+# Gemini чекає, що розмова починається з репліки користувача
+THREAD_START = "(початок розмови)"
 
 Tone = Literal["rude", "polite", "queen"]
 _PROMPTS: dict[Tone, str] = {
@@ -49,11 +54,14 @@ class Responder:
         self._client = client
         self._model = model
 
-    async def answer(self, text: str, tone: Tone = "rude") -> str | None:
+    async def answer(
+        self, text: str, tone: Tone = "rude", history: Sequence[Turn] = ()
+    ) -> str | None:
+        """`history`: попередні репліки ланцюжка reply, щоб бот не суперечив сам собі."""
         try:
             response = await self._client.aio.models.generate_content(
                 model=self._model,
-                contents=text,
+                contents=_contents(text, history),
                 config=types.GenerateContentConfig(
                     system_instruction=_PROMPTS[tone],
                     max_output_tokens=400,
@@ -66,3 +74,11 @@ class Responder:
         if not answer:
             return None
         return answer[:MAX_ANSWER_LENGTH]
+
+
+def _contents(text: str, history: Sequence[Turn]) -> list[types.Content]:
+    turns = [(turn.role, turn.text) for turn in history]
+    turns.append(("user", text))
+    if turns[0][0] == "model":
+        turns.insert(0, ("user", THREAD_START))
+    return [types.Content(role=role, parts=[types.Part(text=part)]) for role, part in turns]

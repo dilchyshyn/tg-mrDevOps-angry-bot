@@ -7,6 +7,7 @@ from google import genai
 from google.genai import types
 
 from bot.cooldown import Cooldown
+from bot.dialogs import Dialogs
 from bot.handlers import router
 from bot.protected import ProtectedUsers
 from bot.quote_source import QuoteSource
@@ -52,6 +53,7 @@ async def run() -> None:
         model=settings.llm_model,
     )
     dispatcher["cooldown"] = Cooldown(settings.cooldown_seconds)
+    dispatcher["dialogs"] = Dialogs()
     protected_users = ProtectedUsers.parse(settings.protected_users)
     dispatcher["protected_users"] = protected_users
     queen_users = ProtectedUsers.parse(settings.queen_users)

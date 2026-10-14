@@ -1,5 +1,6 @@
 from typing import Any
 
+from bot.dialogs import Turn
 from bot.responder import ANSWER_PROMPT, MAX_ANSWER_LENGTH, POLITE_PROMPT, QUEEN_PROMPT, Responder
 
 
@@ -56,3 +57,24 @@ async def test_tone_switches_prompt() -> None:
     await responder.answer("питання", tone="queen")
     prompts = [call["config"].system_instruction for call in client.aio.models.calls]
     assert prompts == [ANSWER_PROMPT, POLITE_PROMPT, QUEEN_PROMPT]
+
+
+async def test_history_is_sent_as_turns() -> None:
+    client = _FakeClient("ok")
+    responder = Responder(client, "model")  # type: ignore[arg-type]
+    history = [Turn("user", "питання", None), Turn("model", "відповідь", 1)]
+    await responder.answer("а чому?", history=history)
+    contents = client.aio.models.calls[0]["contents"]
+    assert [(c.role, c.parts[0].text) for c in contents] == [
+        ("user", "питання"),
+        ("model", "відповідь"),
+        ("user", "а чому?"),
+    ]
+
+
+async def test_history_starting_with_bot_gets_user_turn_first() -> None:
+    client = _FakeClient("ok")
+    responder = Responder(client, "model")  # type: ignore[arg-type]
+    await responder.answer("чого?", history=[Turn("model", "цитата", None)])
+    roles = [c.role for c in client.aio.models.calls[0]["contents"]]
+    assert roles == ["user", "model", "user"]

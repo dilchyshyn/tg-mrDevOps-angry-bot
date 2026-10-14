@@ -3,6 +3,7 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message
 
 from bot.cooldown import Cooldown
+from bot.dialogs import Dialogs, Turn
 from bot.protected import ProtectedUsers
 from bot.quote_source import QuoteSource
 from bot.responder import Responder, Tone
@@ -21,13 +22,20 @@ NO_ANSWER = "Шо? Я зараз не на звʼязку, пиши пізніш
 POLITE_NO_ANSWER = "Вибач, зараз не можу відповісти. Напиши трохи пізніше 🙂"
 
 
+def reply_to_bot(message: Message, bot: Bot) -> Message | None:
+    """Повідомлення бота, на яке відповіли, або `None`."""
+    reply = message.reply_to_message
+    if reply is not None and reply.from_user is not None and reply.from_user.id == bot.id:
+        return reply
+    return None
+
+
 async def is_addressed(message: Message, bot: Bot) -> bool:
     """Звертання до бота: на ім'я, через @username або reply на його повідомлення."""
     text = message.text or ""
     if calls_bot_by_name(text):
         return True
-    reply = message.reply_to_message
-    if reply is not None and reply.from_user is not None and reply.from_user.id == bot.id:
+    if reply_to_bot(message, bot) is not None:
         return True
     me = await bot.me()
     return me.username is not None and f"@{me.username.lower()}" in text.lower()
@@ -50,6 +58,7 @@ async def on_group_text(
     cooldown: Cooldown,
     protected_users: ProtectedUsers,
     queen_users: ProtectedUsers,
+    dialogs: Dialogs,
 ) -> None:
     text = message.text or ""
     queen = queen_users.contains(message.from_user)
@@ -64,16 +73,29 @@ async def on_group_text(
 
     # Пряме звертання без cooldown: людина сама покликала бота
     if await is_addressed(message, bot):
-        answer = await responder.answer(text, tone=tone) if responder else None
+        # Reply на бота: Gemini бачить попередні репліки ланцюжка, щоб не суперечити собі
+        parent = reply_to_bot(message, bot)
+        history: list[Turn] = []
+        if parent is not None:
+            history = dialogs.thread(message.chat.id, parent.message_id)
+            if not history and parent.text:
+                # Ланцюжка немає (рестарт, DevOps-цитата): хоча б те, на що відповіли
+                history = [Turn("model", parent.text, None)]
+
+        answer = await responder.answer(text, tone=tone, history=history) if responder else None
         if queen:
-            await message.reply(answer or queen_phrase())
-            return
-        if protected:
+            reply_text = answer or queen_phrase()
+        elif protected:
             # Захищеним ніколи не йде цитата з матами, навіть при збої LLM
-            await message.reply(answer or POLITE_NO_ANSWER)
-            return
-        # Ліміт Gemini або збій: бот не мовчить, а кидає цитату з пулу
-        await message.reply(answer or quotes.static_quote() or NO_ANSWER)
+            reply_text = answer or POLITE_NO_ANSWER
+        else:
+            # Ліміт Gemini або збій: бот не мовчить, а кидає цитату з пулу
+            reply_text = answer or quotes.static_quote() or NO_ANSWER
+
+        sent = await message.reply(reply_text)
+        parent_id = parent.message_id if parent is not None else None
+        dialogs.add(message.chat.id, message.message_id, "user", text, parent_id)
+        dialogs.add(message.chat.id, sent.message_id, "model", reply_text, message.message_id)
         return
 
     # Королеві на DevOps замість грубої цитати комплімент, звичайні повідомлення без реакції
