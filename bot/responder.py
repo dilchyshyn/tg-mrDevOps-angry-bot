@@ -6,7 +6,7 @@ from google import genai
 from google.genai import types
 
 from bot.dialogs import Turn
-from bot.llm import FORBIDDEN_TOPICS, format_examples, generate
+from bot.llm import format_examples, generate
 
 ONLY_TEXT = "Відповідай ЛИШЕ текстом відповіді, без лапок і пояснень."
 ANSWER_PROMPT = (
@@ -14,9 +14,7 @@ ANSWER_PROMPT = (
     "або реплікою. Відповідай коротко, до трьох речень, грубим уличним суржиком або "
     "українською з матами. Якщо питання про DevOps чи техніку, дай корисну відповідь "
     "по суті, але в цьому стилі. Наприкінці додай одну свою коротку пацанську цитату "
-    "до теми, у стилі прикладів цитат, якщо їх дадуть, але не копіюй їх дослівно. "
-    + FORBIDDEN_TOPICS
-    + ONLY_TEXT
+    "до теми, у стилі прикладів цитат, якщо їх дадуть, але не копіюй їх дослівно. " + ONLY_TEXT
 )
 # Для захищених користувачів (PROTECTED_USERS): та сама суть, але без грубощів
 POLITE_PROMPT = (

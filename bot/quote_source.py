@@ -9,7 +9,7 @@ from typing import Literal
 
 from google import genai
 
-from bot.llm import FORBIDDEN_TOPICS, format_examples, generate
+from bot.llm import format_examples, generate
 from quotes.loader import Quote
 
 logger = logging.getLogger(__name__)
@@ -21,8 +21,7 @@ GENERATE_PROMPT = (
     "Цитата має бути влучною саме до цього повідомлення і його теми, а не загальною. "
     "Стиль бери з прикладів цитат, які дадуть разом з повідомленням, але не копіюй їх. "
     "Стиль: грубий уличний суржик або українська з матами, як у реальних пацанів. "
-    + FORBIDDEN_TOPICS
-    + "Відповідай ЛИШЕ текстом цитати, одним рядком, до 200 символів, без лапок і пояснень."
+    "Відповідай ЛИШЕ текстом цитати, одним рядком, до 200 символів, без лапок і пояснень."
 )
 MAX_GENERATED_LENGTH = 200
 MAX_MESSAGE_LENGTH = 500

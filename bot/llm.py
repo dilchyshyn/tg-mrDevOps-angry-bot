@@ -7,12 +7,6 @@ from google.genai import types
 
 logger = logging.getLogger(__name__)
 
-# Межі для всіх грубих промптів, одним текстом, щоб не розійшлись
-FORBIDDEN_TOPICS = (
-    "Заборонено: жарти про жінок і їхню сексуальність, національності, релігії, "
-    "сексуальну орієнтацію, будь-яких конкретних людей, реальних осіб та брендів. "
-)
-
 
 async def generate(
     client: genai.Client,
