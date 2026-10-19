@@ -31,7 +31,7 @@ jobs:
     env:
       SHA: ${{ inputs.sha || github.event.workflow_run.head_sha || github.sha }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ env.SHA }}
 
